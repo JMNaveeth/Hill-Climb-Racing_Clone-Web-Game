@@ -32,6 +32,13 @@ export function initUI(api) {
       el.classList.remove("active");
     });
     if (screens[name]) screens[name].classList.add("active");
+
+    // Hide pedal buttons whenever any overlay screen is shown; show only during gameplay (name === null)
+    const btnBrake = document.getElementById("btn-brake");
+    const btnGas = document.getElementById("btn-gas");
+    const isGameplay = name === null || name === undefined;
+    if (btnBrake) btnBrake.style.visibility = isGameplay ? "visible" : "hidden";
+    if (btnGas) btnGas.style.visibility = isGameplay ? "visible" : "hidden";
   }
 
   showScreen("main");
