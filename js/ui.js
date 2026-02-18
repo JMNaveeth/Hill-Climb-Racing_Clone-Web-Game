@@ -157,36 +157,38 @@ export function initUI(api) {
 
   function showAdThenGameover(resultDetail) {
     pendingResult = resultDetail;
-    if (!adScreen || !adSlot) {
-      showGameoverFromResult(pendingResult);
-      return;
-    }
+    
+    const platform = api.platform;
+    
+    // Use platform SDK if available, otherwise show ad screen
+    if (platform && platform.isPlatform()) {
+      // Use platform SDK for ads
+      platform.requestInterstitialAd(() => {
+        showGameoverFromResult(pendingResult);
+        pendingResult = null;
+      });
+    } else {
+      // Fallback: show custom ad screen
+      if (!adScreen || !adSlot) {
+        showGameoverFromResult(pendingResult);
+        return;
+      }
 
-    showScreen("ad");
+      showScreen("ad");
 
-    if (!window.gameAds) {
-      window.gameAds = {};
-    }
+      let finished = false;
+      const done = () => {
+        if (finished) return;
+        finished = true;
+        showGameoverFromResult(pendingResult);
+        pendingResult = null;
+      };
 
-    window.gameAds.requestInterstitial = window.gameAds.requestInterstitial || function (done) {
-      setTimeout(done, 2500);
-    };
+      if (btnAdContinue) {
+        btnAdContinue.onclick = () => done();
+      }
 
-    let finished = false;
-    const done = () => {
-      if (finished) return;
-      finished = true;
-      showGameoverFromResult(pendingResult);
-      pendingResult = null;
-    };
-
-    if (btnAdContinue) {
-      btnAdContinue.onclick = () => done();
-    }
-
-    try {
-      window.gameAds.requestInterstitial(done);
-    } catch {
+      // Auto-continue after 2 seconds if no ad system
       setTimeout(done, 2000);
     }
   }
@@ -235,7 +237,10 @@ export function initUI(api) {
   const vehicleCarousel = document.getElementById("vehicle-carousel");
   const vehicleStats = document.getElementById("vehicle-stats");
   const btnUnlockVehicle = document.getElementById("btn-unlock-vehicle");
+  const btnUnlockAd = document.getElementById("btn-unlock-ad");
+  const btnWatchAdCoins = document.getElementById("btn-watch-ad-coins");
   const btnSelectVehicle = document.getElementById("btn-select-vehicle");
+  const btnGameoverAdCoins = document.getElementById("btn-gameover-ad-coins");
 
   let vehicleIndex = 0;
 
@@ -297,6 +302,13 @@ export function initUI(api) {
     if (btnSelectVehicle) {
       btnSelectVehicle.disabled = !unlocked;
     }
+    if (btnUnlockAd) {
+      btnUnlockAd.disabled = unlocked;
+      btnUnlockAd.style.display = unlocked ? 'none' : 'block';
+    }
+    if (btnUnlockVehicle) {
+      btnUnlockVehicle.style.display = unlocked ? 'none' : 'block';
+    }
   }
 
   function makeStatRow(label, value) {
@@ -336,6 +348,109 @@ export function initUI(api) {
       const sel = api.getCurrentSelection();
       api.storage.setLastSelected(sel.levelId, v.id);
       alert(`${v.name} selected.`);
+    };
+  }
+
+  // Rewarded ad for unlocking vehicle
+  if (btnUnlockAd) {
+    btnUnlockAd.onclick = async () => {
+      const platform = api.platform;
+      const v = vehicles[vehicleIndex];
+      const st = api.storage;
+      
+      if (st.isVehicleUnlocked(v.id)) return;
+      
+      if (!platform || !platform.isPlatform()) {
+        alert('Rewarded ads are only available on Poki or CrazyGames.');
+        return;
+      }
+      
+      btnUnlockAd.disabled = true;
+      btnUnlockAd.textContent = 'Loading ad...';
+      
+      try {
+        const result = await platform.requestRewardedAd({ size: 'medium' });
+        if (result.success) {
+          st.unlockVehicle(v.id);
+          alert(`Unlocked ${v.name} by watching an ad!`);
+          renderGarage();
+        } else {
+          alert('Ad was not completed. Vehicle remains locked.');
+        }
+      } catch (err) {
+        console.error('Rewarded ad error:', err);
+        alert('Failed to load ad. Please try again.');
+      } finally {
+        btnUnlockAd.disabled = false;
+        btnUnlockAd.textContent = 'Watch Ad to Unlock';
+      }
+    };
+  }
+
+  // Rewarded ad for coins (garage)
+  if (btnWatchAdCoins) {
+    btnWatchAdCoins.onclick = async () => {
+      const platform = api.platform;
+      
+      if (!platform || !platform.isPlatform()) {
+        alert('Rewarded ads are only available on Poki or CrazyGames.');
+        return;
+      }
+      
+      btnWatchAdCoins.disabled = true;
+      btnWatchAdCoins.textContent = 'Loading ad...';
+      
+      try {
+        const result = await platform.requestRewardedAd({ size: 'medium' });
+        if (result.success) {
+          api.storage.addCoins(50);
+          alert('You earned 50 coins!');
+        } else {
+          alert('Ad was not completed.');
+        }
+      } catch (err) {
+        console.error('Rewarded ad error:', err);
+        alert('Failed to load ad. Please try again.');
+      } finally {
+        btnWatchAdCoins.disabled = false;
+        btnWatchAdCoins.textContent = 'Watch Ad for 50 Coins';
+      }
+    };
+  }
+
+  // Rewarded ad for coins (gameover)
+  if (btnGameoverAdCoins) {
+    btnGameoverAdCoins.onclick = async () => {
+      const platform = api.platform;
+      
+      if (!platform || !platform.isPlatform()) {
+        alert('Rewarded ads are only available on Poki or CrazyGames.');
+        return;
+      }
+      
+      btnGameoverAdCoins.disabled = true;
+      btnGameoverAdCoins.textContent = 'Loading ad...';
+      
+      try {
+        const result = await platform.requestRewardedAd({ size: 'medium' });
+        if (result.success) {
+          api.storage.addCoins(50);
+          alert('You earned 50 coins!');
+          // Refresh gameover display
+          if (pendingResult) {
+            pendingResult.coinsEarned += 50;
+            showGameoverFromResult(pendingResult);
+          }
+        } else {
+          alert('Ad was not completed.');
+        }
+      } catch (err) {
+        console.error('Rewarded ad error:', err);
+        alert('Failed to load ad. Please try again.');
+      } finally {
+        btnGameoverAdCoins.disabled = false;
+        btnGameoverAdCoins.textContent = 'Watch Ad for 50 Coins';
+      }
     };
   }
 

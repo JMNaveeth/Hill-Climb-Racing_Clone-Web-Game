@@ -11,6 +11,20 @@ export class GameRenderer {
     this.height = ctx.canvas.clientHeight || ctx.canvas.height;
   }
 
+  _drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
   resize(width, height) {
     this.width = width;
     this.height = height;
@@ -44,8 +58,7 @@ export class GameRenderer {
       ctx.rotate(body.angle);
       const w = body.bounds.max.x - body.bounds.min.x;
       const h = body.bounds.max.y - body.bounds.min.y;
-      ctx.beginPath();
-      ctx.roundRect(-w / 2, -h / 2, w, h, 8);
+      this._drawRoundedRect(ctx, -w / 2, -h / 2, w, h, 8);
       ctx.fill();
       ctx.restore();
     }
@@ -161,8 +174,7 @@ export class GameRenderer {
     ctx.translate(x, y);
     ctx.rotate(-0.1);
     ctx.fillStyle = "#ff7043";
-    ctx.beginPath();
-    ctx.roundRect(-12, -18, 24, 30, 4);
+    this._drawRoundedRect(ctx, -12, -18, 24, 30, 4);
     ctx.fill();
     ctx.fillStyle = "#ffccbc";
     ctx.fillRect(-5, -22, 10, 6);
@@ -181,8 +193,7 @@ export class GameRenderer {
     ctx.translate(x, y);
     ctx.rotate(0.1);
     ctx.fillStyle = "#40c4ff";
-    ctx.beginPath();
-    ctx.roundRect(-10, -14, 20, 26, 4);
+    this._drawRoundedRect(ctx, -10, -14, 20, 26, 4);
     ctx.fill();
     ctx.strokeStyle = "#e1f5fe";
     ctx.lineWidth = 2;
@@ -253,18 +264,15 @@ export class GameRenderer {
     const h = chassis.bounds.max.y - chassis.bounds.min.y;
 
     ctx.fillStyle = "#ff8a65";
-    ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, 6);
+    this._drawRoundedRect(ctx, -w / 2, -h / 2, w, h, 6);
     ctx.fill();
 
     ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.beginPath();
-    ctx.roundRect(-w * 0.15, -h * 0.9, w * 0.6, h * 0.8, 4);
+    this._drawRoundedRect(ctx, -w * 0.15, -h * 0.9, w * 0.6, h * 0.8, 4);
     ctx.fill();
 
     ctx.fillStyle = "#263238";
-    ctx.beginPath();
-    ctx.roundRect(-w * 0.3, -h * 0.1, w * 0.3, h * 0.3, 3);
+    this._drawRoundedRect(ctx, -w * 0.3, -h * 0.1, w * 0.3, h * 0.3, 3);
     ctx.fill();
 
     ctx.fillStyle = "#ffca28";

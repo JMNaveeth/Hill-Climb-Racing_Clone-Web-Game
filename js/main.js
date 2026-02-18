@@ -10,6 +10,7 @@ import { InputManager } from "./input.js";
 import { Storage } from "./storage.js";
 import { AudioManager } from "./audio.js";
 import { ParticleSystem } from "./particles.js";
+import { PlatformIntegration } from "./platform.js";
 
 export const GAME_STATE = {
   IDLE: "idle",
@@ -29,6 +30,7 @@ let input;
 let storage;
 let audioManager;
 let particles;
+let platform;
 
 let currentState = GAME_STATE.IDLE;
 let currentLevelId = 1;
@@ -51,32 +53,46 @@ function resizeCanvas() {
   }
 }
 
-function initCore() {
-  engine = createEngine();
-  world = createWorld(engine);
-  storage = new Storage(window.localStorage);
-  audioManager = new AudioManager();
-  particles = new ParticleSystem();
+async function initCore() {
+  try {
+    engine = createEngine();
+    world = createWorld(engine);
+    storage = new Storage(window.localStorage);
+    audioManager = new AudioManager();
+    particles = new ParticleSystem();
+    platform = new PlatformIntegration();
 
-  renderer = new GameRenderer(ctx, world, particles);
-  hud = new Hud();
-  input = new InputManager(canvas);
+    // Initialize platform SDK (Poki/CrazyGames) - don't block on this
+    platform.init(audioManager).catch(err => {
+      console.warn('Platform SDK init failed (non-critical):', err);
+    });
 
-  initUI({
-    startRun,
-    restartRun,
-    quitToMenu,
-    selectLevel,
-    selectVehicle,
-    getProgress: () => storage.getAll(),
-    getVehicles: () => vehicles,
-    getLevels: () => levels,
-    getCurrentSelection: () => ({ levelId: currentLevelId, vehicleId: currentVehicleId }),
-    storage,
-  });
+    renderer = new GameRenderer(ctx, world, particles);
+    hud = new Hud();
+    input = new InputManager(canvas);
 
-  window.addEventListener("resize", resizeCanvas);
-  resizeCanvas();
+    initUI({
+      startRun,
+      restartRun,
+      quitToMenu,
+      selectLevel,
+      selectVehicle,
+      getProgress: () => storage.getAll(),
+      getVehicles: () => vehicles,
+      getLevels: () => levels,
+      getCurrentSelection: () => ({ levelId: currentLevelId, vehicleId: currentVehicleId }),
+      storage,
+      platform,
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    
+    console.log('Game initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize game:', error);
+    alert('Game initialization failed. Please check console for details.');
+  }
 }
 
 function startRun({ levelId, vehicleId }) {
@@ -118,6 +134,11 @@ function startRun({ levelId, vehicleId }) {
 
   audioManager.startEngine();
 
+  // Notify platform SDK that gameplay started
+  if (platform) {
+    platform.gameplayStart();
+  }
+
   currentState = GAME_STATE.RUNNING;
 }
 
@@ -129,6 +150,11 @@ function restartRun() {
 function quitToMenu() {
   clearWorld();
   currentState = GAME_STATE.IDLE;
+  
+  // Notify platform SDK that gameplay stopped
+  if (platform) {
+    platform.gameplayStop();
+  }
 }
 
 function selectLevel(levelId) {
