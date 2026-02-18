@@ -33,12 +33,14 @@ export function initUI(api) {
     });
     if (screens[name]) screens[name].classList.add("active");
 
-    // Hide pedal buttons whenever any overlay screen is shown; show only during gameplay (name === null)
+    // Hide pedal buttons and gauges whenever any overlay screen is shown; show only during gameplay (name === null)
     const btnBrake = document.getElementById("btn-brake");
     const btnGas = document.getElementById("btn-gas");
+    const hudGauges = document.getElementById("hud-gauges");
     const isGameplay = name === null || name === undefined;
     if (btnBrake) btnBrake.style.visibility = isGameplay ? "visible" : "hidden";
     if (btnGas) btnGas.style.visibility = isGameplay ? "visible" : "hidden";
+    if (hudGauges) hudGauges.style.visibility = isGameplay ? "visible" : "hidden";
   }
 
   showScreen("main");
