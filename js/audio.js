@@ -11,6 +11,14 @@ export class AudioManager {
     this.engineLFO = null;
     this.engineLFOGain = null;
     this.suspended = false;
+    // Music system
+    this._musicConfig = null;
+    this._musicBeat = 0;
+    this._musicNextTime = 0;
+    this._musicIntervalId = null;
+    this._musicMasterGain = null;
+    this._padOscs = null;
+    this._padGains = null;
 
     document.addEventListener("pointerdown", () => this._lazyInit(), {
       once: true,
@@ -118,6 +126,153 @@ export class AudioManager {
     this.engineFilter = null;
     this.engineGain = null;
     this.engineGain2 = null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // BACKGROUND MUSIC  (look-ahead Web Audio scheduler)
+  // ─────────────────────────────────────────────────────────────────
+
+  startMusic(theme) {
+    this.stopMusic();
+    if (!this.ctx) this._lazyInit();
+    if (!this.ctx || this.suspended) return;
+
+    this._musicConfig = this._getMusicConfig(theme);
+    this._musicBeat = 0;
+    this._musicNextTime = this.ctx.currentTime + 0.4;
+
+    this._musicMasterGain = this.ctx.createGain();
+    this._musicMasterGain.gain.setValueAtTime(0, this.ctx.currentTime);
+    this._musicMasterGain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + 2.5);
+    this._musicMasterGain.connect(this.ctx.destination);
+
+    this._startMusicPad();
+    // Fire every 50 ms, schedule notes 200 ms ahead (classic look-ahead scheduler)
+    this._musicIntervalId = setInterval(() => this._musicTick(), 50);
+  }
+
+  stopMusic() {
+    if (this._musicIntervalId) {
+      clearInterval(this._musicIntervalId);
+      this._musicIntervalId = null;
+    }
+    if (this._musicMasterGain && this.ctx) {
+      try {
+        this._musicMasterGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4);
+        const ref = this._musicMasterGain;
+        setTimeout(() => { try { ref.disconnect(); } catch(e) {} }, 1200);
+      } catch(e) {
+        try { this._musicMasterGain.disconnect(); } catch(e2) {}
+      }
+      this._musicMasterGain = null;
+    }
+    if (this._padOscs) {
+      this._padOscs.forEach(o => { try { o.stop(); o.disconnect(); } catch(e) {} });
+      this._padOscs = null;
+    }
+    if (this._padGains) {
+      this._padGains.forEach(g => { try { g.disconnect(); } catch(e) {} });
+      this._padGains = null;
+    }
+    this._musicConfig = null;
+  }
+
+  _startMusicPad() {
+    if (!this.ctx || !this._musicMasterGain) return;
+    const cfg = this._musicConfig;
+    this._padOscs = [];
+    this._padGains = [];
+    cfg.padNotes.forEach(freq => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.20 / cfg.padNotes.length, this.ctx.currentTime + 3.0);
+      osc.connect(gain);
+      gain.connect(this._musicMasterGain);
+      osc.start();
+      this._padOscs.push(osc);
+      this._padGains.push(gain);
+    });
+  }
+
+  _musicTick() {
+    if (!this.ctx || !this._musicConfig || !this._musicMasterGain) return;
+    if (this.ctx.state === 'suspended') return;
+    const lookAhead = 0.2;
+    while (this._musicNextTime < this.ctx.currentTime + lookAhead) {
+      this._scheduleMusicNote(this._musicNextTime);
+      this._musicBeat = (this._musicBeat + 1) % this._musicConfig.notes.length;
+      this._musicNextTime += this._musicConfig.tempo;
+    }
+  }
+
+  _scheduleMusicNote(time) {
+    const cfg = this._musicConfig;
+    const freq = cfg.notes[this._musicBeat];
+    if (!freq || !this._musicMasterGain) return; // 0 = rest
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = cfg.type;
+    osc.frequency.value = freq;
+    const vel = cfg.velocities[this._musicBeat] || 0.15;
+    gain.gain.setValueAtTime(0.001, time);
+    gain.gain.linearRampToValueAtTime(vel, time + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + cfg.tempo * 0.78);
+    osc.connect(gain);
+    gain.connect(this._musicMasterGain);
+    osc.start(time);
+    osc.stop(time + cfg.tempo + 0.05);
+  }
+
+  _getMusicConfig(theme) {
+    const easy   = ['pastelFields','pastelHills','beach','farm','cliffs','meadow','plains','orchard','lake','forest'];
+    const normal = ['mountain','desert','jungle','snow','canyon','arctic','rainforest','swamp','storm','volcano'];
+    const hard   = ['asteroid','cave','underwater','space','lava'];
+
+    if (easy.includes(theme)) {
+      return {
+        // C major pentatonic ascending/descending — bright & cheerful
+        notes:      [261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 0,
+                     293.66, 369.99, 440.00, 587.33, 440.00, 369.99, 293.66, 0],
+        velocities: [0.18, 0.14, 0.16, 0.20, 0.14, 0.12, 0.16, 0,
+                     0.16, 0.12, 0.18, 0.20, 0.14, 0.12, 0.14, 0],
+        tempo: 0.28, type: 'sine',
+        padNotes: [65.41, 98.00, 130.81],   // C2 G2 C3
+      };
+    }
+    if (normal.includes(theme)) {
+      return {
+        // D Dorian — adventurous, slightly mysterious
+        notes:      [293.66, 0, 369.99, 440.00, 0, 493.88, 440.00, 369.99,
+                     329.63, 0, 293.66, 0,  369.99, 440.00, 493.88, 0],
+        velocities: [0.20, 0, 0.15, 0.18, 0, 0.16, 0.15, 0.14,
+                     0.18, 0, 0.16, 0,  0.14, 0.18, 0.20, 0],
+        tempo: 0.34, type: 'triangle',
+        padNotes: [73.42, 110.00, 146.83],  // D2 A2 D3
+      };
+    }
+    if (hard.includes(theme)) {
+      return {
+        // A minor pentatonic — sparse & tense
+        notes:      [220.00, 0, 0, 261.63, 0, 293.66, 0, 329.63,
+                     0, 0, 220.00, 0,  246.94, 0, 0, 207.65],
+        velocities: [0.22, 0, 0, 0.16, 0, 0.18, 0, 0.16,
+                     0, 0, 0.20, 0,  0.15, 0, 0, 0.18],
+        tempo: 0.42, type: 'triangle',
+        padNotes: [55.00, 82.41, 110.00],   // A1 E2 A2
+      };
+    }
+    // Advanced — dark & dramatic (F# diminished feel)
+    return {
+      notes:      [185.00, 0, 0, 220.00, 0, 207.65, 0, 0,
+                   185.00, 0, 174.61, 0,  0, 185.00, 0, 0],
+      velocities: [0.22, 0, 0, 0.18, 0, 0.16, 0, 0,
+                   0.20, 0, 0.18, 0,  0, 0.14, 0, 0],
+      tempo: 0.52, type: 'sawtooth',
+      padNotes: [46.25, 69.30, 92.50],      // F#1 C#2 F#2
+    };
   }
 
   _oneShot({ freq = 440, duration = 0.15, type = "sine", volume = 0.4 }) {

@@ -143,6 +143,7 @@ function startRun({ levelId, vehicleId }) {
   lastTimestamp = performance.now();
 
   audioManager.startEngine();
+  audioManager.startMusic(level.theme);
 
     // Notify platform SDK that gameplay started
     if (platform) {
@@ -164,6 +165,8 @@ function restartRun() {
 
 function quitToMenu() {
   clearWorld();
+  audioManager.stopEngine();
+  audioManager.stopMusic();
   currentState = GAME_STATE.IDLE;
   
   // Notify platform SDK that gameplay stopped
@@ -266,6 +269,7 @@ function update(dt) {
 function handleRunEnd(result) {
   currentState = GAME_STATE.GAMEOVER;
   audioManager.stopEngine();
+  audioManager.stopMusic();
 
   const totalCoins = storage.getCoins() + runData.coinsCollected;
   storage.setCoins(totalCoins);
