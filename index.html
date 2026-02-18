@@ -73,19 +73,21 @@
       </div>
 
       <div id="screen-garage" class="screen">
-        <div class="panel">
-          <h2>Garage</h2>
-          <div id="vehicle-carousel"></div>
-          <div id="vehicle-stats"></div>
-          <div id="vehicle-actions">
-            <button id="btn-unlock-vehicle">Unlock</button>
-            <button id="btn-unlock-ad">Watch Ad to Unlock</button>
-            <button id="btn-select-vehicle">Select</button>
+        <div class="garage-wrap">
+          <div class="garage-head">
+            <h1 class="garage-title">GARAGE</h1>
+            <div class="garage-coins" id="garage-coins">⚡ 0 coins</div>
           </div>
-          <div id="vehicle-actions-coins" style="margin-top:8px">
-            <button id="btn-watch-ad-coins" style="background:linear-gradient(135deg,#667eea,#764ba2)">Watch Ad for 50 Coins</button>
+          <div class="garage-tabs">
+            <button class="garage-tab active" data-filter="all">All</button>
+            <button class="garage-tab" data-filter="car">Cars</button>
+            <button class="garage-tab" data-filter="bike">Bikes</button>
           </div>
-          <button class="btn-back" data-target="screen-main-menu">Back</button>
+          <div class="garage-grid" id="garage-grid"></div>
+          <div class="garage-footer">
+            <button id="btn-watch-ad-coins">🎥 Watch Ad for 50 Coins</button>
+            <button class="btn-back" data-target="screen-main-menu">← Back</button>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 // ui.js - Menus, screens, transitions, vehicle and level selection
 
-import { vehicles } from "./vehicles.js";
+import { vehicles, svgMap } from "./vehicles.js";
 
 export function initUI(api) {
   console.log('Initializing UI...');
@@ -311,170 +311,111 @@ export function initUI(api) {
     }
   }
 
-  const vehicleCarousel = document.getElementById("vehicle-carousel");
-  const vehicleStats = document.getElementById("vehicle-stats");
-  const btnUnlockVehicle = document.getElementById("btn-unlock-vehicle");
-  const btnUnlockAd = document.getElementById("btn-unlock-ad");
   const btnWatchAdCoins = document.getElementById("btn-watch-ad-coins");
-  const btnSelectVehicle = document.getElementById("btn-select-vehicle");
   const btnGameoverAdCoins = document.getElementById("btn-gameover-ad-coins");
 
-  let vehicleIndex = 0;
+  const _statColors = {
+    speed:'linear-gradient(90deg,#f7971e,#ffd200)',
+    acceleration:'linear-gradient(90deg,#11998e,#38ef7d)',
+    fuelEfficiency:'linear-gradient(90deg,#36d1dc,#5b86e5)',
+    grip:'linear-gradient(90deg,#a18cd1,#fbc2eb)',
+    traction:'linear-gradient(90deg,#ff512f,#dd2476)',
+  };
+  const _statLabels = {speed:'Speed',acceleration:'Accel',fuelEfficiency:'Efficiency',grip:'Grip',traction:'Traction'};
+  const _statKeys = ['speed','acceleration','fuelEfficiency','grip','traction'];
 
   function renderGarage() {
-    if (!vehicleCarousel || !vehicleStats) {
-      console.error('Garage elements not found');
-      return;
-    }
-    
-    if (!vehicles || vehicles.length === 0) {
-      console.error('Vehicles array is empty');
-      vehicleCarousel.innerHTML = '<div>No vehicles available</div>';
-      return;
-    }
-    
+    const garageGrid = document.getElementById('garage-grid');
+    const garageCoins = document.getElementById('garage-coins');
+    if (!garageGrid) return;
+
     const st = api.storage;
-    vehicleCarousel.innerHTML = "";
+    const selectedId = api.getCurrentSelection ? api.getCurrentSelection().vehicleId : null;
 
-    const v = vehicles[vehicleIndex];
-    if (!v) {
-      console.error('Vehicle at index', vehicleIndex, 'not found');
-      return;
-    }
-    const unlocked = st.isVehicleUnlocked(v.id) || v.defaultUnlocked;
-    if (v.defaultUnlocked && !st.isVehicleUnlocked(v.id)) {
-      st.unlockVehicle(v.id);
-    }
+    if (garageCoins) garageCoins.textContent = `⚡ ${st.getCoins()} coins`;
+    garageGrid.innerHTML = '';
 
-    const left = document.createElement("button");
-    left.textContent = "<";
-    left.style.width = "40px";
-    left.onclick = () => {
-      vehicleIndex = (vehicleIndex - 1 + vehicles.length) % vehicles.length;
-      renderGarage();
-    };
+    vehicles.forEach(v => {
+      if (v.defaultUnlocked && !st.isVehicleUnlocked(v.id)) st.unlockVehicle(v.id);
+      const unlocked = st.isVehicleUnlocked(v.id) || v.defaultUnlocked;
+      const selected = selectedId === v.id;
+      const canAfford = st.getCoins() >= v.cost;
 
-    const right = document.createElement("button");
-    right.textContent = ">";
-    right.style.width = "40px";
-    right.onclick = () => {
-      vehicleIndex = (vehicleIndex + 1) % vehicles.length;
-      renderGarage();
-    };
+      const svgFn = svgMap[v.id];
+      const svgHTML = svgFn ? svgFn(v) : '';
 
-    const center = document.createElement("div");
-    center.style.flex = "1";
-    center.style.textAlign = "center";
-    center.innerHTML = `<div style="font-weight:700;margin-bottom:4px">${v.name}</div>
-      <div style="font-size:0.75rem;opacity:0.8">${v.type === "car" ? "Car" : "Motorbike"}</div>
-      <div style="margin-top:6px;font-size:0.7rem;opacity:0.7">${
-        unlocked ? "Unlocked" : `Locked • Cost: ${v.cost} coins`
-      }</div>`;
+      const card = document.createElement('div');
+      card.className = `gcard${unlocked ? '' : ' gcard-locked'}${selected ? ' gcard-selected' : ''}`;
+      card.dataset.type = v.type;
 
-    vehicleCarousel.appendChild(left);
-    vehicleCarousel.appendChild(center);
-    vehicleCarousel.appendChild(right);
+      card.innerHTML = `
+        <div class="gcard-bar" style="background:linear-gradient(90deg,${v.palette.body},${v.palette.accent})"></div>
+        <div class="gcard-stage">
+          ${!unlocked ? '<div class="gcard-lock">🔒</div>' : ''}
+          ${selected ? '<div class="gcard-selected-badge">✓ IN USE</div>' : ''}
+          <div class="gcard-svg">${svgHTML}</div>
+        </div>
+        <div class="gcard-body">
+          <div class="gcard-header">
+            <div>
+              <div class="gcard-name">${v.name}</div>
+              <div class="gcard-type">${v.type === 'car' ? '🚗 Car' : '🏍️ Bike'}</div>
+            </div>
+            <div class="gcard-badge ${v.cost === 0 ? 'gfree' : 'gpaid'}">${v.cost === 0 ? 'FREE' : `⚡ ${v.cost}`}</div>
+          </div>
+          <div class="gcard-stats">
+            ${_statKeys.map(k => `
+              <div class="gcard-stat">
+                <div class="gcard-stat-label">${_statLabels[k]}</div>
+                <div class="gcard-stat-track"><div class="gcard-stat-fill" style="width:${v.stats[k]*10}%;background:${_statColors[k]}"></div></div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="gcard-action">
+            ${selected
+              ? `<button class="gcard-btn gcard-btn-selected" disabled>✓ Selected</button>`
+              : unlocked
+                ? `<button class="gcard-btn gcard-btn-select" data-id="${v.id}">▶ Select</button>`
+                : `<button class="gcard-btn gcard-btn-unlock${canAfford ? '' : ' cant-afford'}" data-id="${v.id}" data-cost="${v.cost}">${canAfford ? `Unlock ⚡${v.cost}` : `⚡${v.cost} coins needed`}</button>`
+            }
+          </div>
+        </div>`;
+      garageGrid.appendChild(card);
+    });
 
-    vehicleStats.innerHTML = "";
-    const wrapper = document.createElement("div");
-    wrapper.innerHTML = makeStatRow("Speed", v.stats.speed) +
-      makeStatRow("Accel", v.stats.acceleration) +
-      makeStatRow("Fuel Eff.", v.stats.fuelEfficiency) +
-      makeStatRow("Grip", v.stats.grip) +
-      makeStatRow("Traction", v.stats.traction);
-    vehicleStats.appendChild(wrapper);
+    // Tab filter
+    document.querySelectorAll('.garage-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.garage-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const f = tab.dataset.filter;
+        document.querySelectorAll('.gcard').forEach(c => {
+          c.style.display = (f === 'all' || c.dataset.type === f) ? '' : 'none';
+        });
+      };
+    });
 
-    if (btnUnlockVehicle) {
-      btnUnlockVehicle.disabled = unlocked;
-      btnUnlockVehicle.textContent = unlocked
-        ? "Unlocked"
-        : `Unlock for ${v.cost} coins`;
-    }
-    if (btnSelectVehicle) {
-      btnSelectVehicle.disabled = !unlocked;
-    }
-    if (btnUnlockAd) {
-      btnUnlockAd.disabled = unlocked;
-      btnUnlockAd.style.display = unlocked ? 'none' : 'block';
-    }
-    if (btnUnlockVehicle) {
-      btnUnlockVehicle.style.display = unlocked ? 'none' : 'block';
-    }
-  }
-
-  function makeStatRow(label, value) {
-    // Value is 1-10, convert to percentage (0-100%)
-    const pct = Math.max(0, Math.min(100, (value / 10) * 100));
-    return `<div class="stat-row">
-      <span>${label}</span>
-      <div class="stat-bar">
-        <div class="stat-bar-fill" style="width:${pct}%"></div>
-      </div>
-    </div>`;
-  }
-
-  if (btnUnlockVehicle) {
-    btnUnlockVehicle.onclick = () => {
-      const st = api.storage;
-      const v = vehicles[vehicleIndex];
-      const unlocked = st.isVehicleUnlocked(v.id);
-      if (unlocked) return;
-      if (st.getCoins() >= v.cost) {
-        st.addCoins(-v.cost);
-        st.unlockVehicle(v.id);
-        alert(`Unlocked ${v.name}!`);
-        renderGarage();
-      } else {
-        alert("Not enough coins.");
-      }
-    };
-  }
-
-  if (btnSelectVehicle) {
-    btnSelectVehicle.onclick = () => {
-      const v = vehicles[vehicleIndex];
-      const st = api.storage;
-      const unlocked = st.isVehicleUnlocked(v.id);
-      if (!unlocked) return;
-      api.selectVehicle(v.id);
-      const sel = api.getCurrentSelection();
-      api.storage.setLastSelected(sel.levelId, v.id);
-      alert(`${v.name} selected.`);
-    };
-  }
-
-  // Rewarded ad for unlocking vehicle
-  if (btnUnlockAd) {
-    btnUnlockAd.onclick = async () => {
-      const platform = api.platform;
-      const v = vehicles[vehicleIndex];
-      const st = api.storage;
-      
-      if (st.isVehicleUnlocked(v.id)) return;
-      
-      if (!platform || !platform.isPlatform()) {
-        alert('Rewarded ads are only available on Poki or CrazyGames.');
-        return;
-      }
-      
-      btnUnlockAd.disabled = true;
-      btnUnlockAd.textContent = 'Loading ad...';
-      
-      try {
-        const result = await platform.requestRewardedAd({ size: 'medium' });
-        if (result.success) {
-          st.unlockVehicle(v.id);
-          alert(`Unlocked ${v.name} by watching an ad!`);
-          renderGarage();
-        } else {
-          alert('Ad was not completed. Vehicle remains locked.');
+    // Card action buttons (delegated)
+    garageGrid.onclick = e => {
+      const selBtn = e.target.closest('.gcard-btn-select');
+      const unlBtn = e.target.closest('.gcard-btn-unlock');
+      if (selBtn) {
+        const id = selBtn.dataset.id;
+        api.selectVehicle(id);
+        if (api.getCurrentSelection) {
+          const sel = api.getCurrentSelection();
+          api.storage.setLastSelected(sel.levelId, id);
         }
-      } catch (err) {
-        console.error('Rewarded ad error:', err);
-        alert('Failed to load ad. Please try again.');
-      } finally {
-        btnUnlockAd.disabled = false;
-        btnUnlockAd.textContent = 'Watch Ad to Unlock';
+        renderGarage();
+      }
+      if (unlBtn && !unlBtn.classList.contains('cant-afford')) {
+        const id = unlBtn.dataset.id;
+        const cost = Number(unlBtn.dataset.cost);
+        if (st.getCoins() >= cost) {
+          st.addCoins(-cost);
+          st.unlockVehicle(id);
+          renderGarage();
+        }
       }
     };
   }

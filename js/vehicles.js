@@ -1119,7 +1119,7 @@ function svgSupermoto(v) {
 }
 
 // ─── Dispatch table ───────────────────────────────────────────────────────────
-const svgMap = {
+export const svgMap = {
   rusty_hatchback: svgRustyHatchback,
   monster_truck:   svgMonsterTruck,
   rally_racer:     svgRallyRacer,
