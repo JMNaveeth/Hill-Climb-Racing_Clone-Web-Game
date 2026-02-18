@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hill Climb Canvas</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Matter.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Overlay UI Screens -->
+      <div id="screen-main-menu" class="screen active">
+        <div class="panel">
+          <h1 class="title">Hill Climb Canvas</h1>
+          <button id="btn-play">Play</button>
+          <button id="btn-garage">Garage</button>
+          <button id="btn-levels">Levels</button>
+          <button id="btn-settings">Settings</button>
+          <button id="btn-leaderboard">Leaderboard</button>
+        </div>
+      </div>
+
+      <div id="screen-level-select" class="screen">
+        <div class="panel">
+          <h2>Select Level</h2>
+          <div id="level-grid"></div>
+          <button class="btn-back" data-target="screen-main-menu">Back</button>
+        </div>
+      </div>
+
+      <div id="screen-garage" class="screen">
+        <div class="panel">
+          <h2>Garage</h2>
+          <div id="vehicle-carousel"></div>
+          <div id="vehicle-stats"></div>
+          <div id="vehicle-actions">
+            <button id="btn-unlock-vehicle">Unlock</button>
+            <button id="btn-select-vehicle">Select</button>
+          </div>
+          <button class="btn-back" data-target="screen-main-menu">Back</button>
+        </div>
+      </div>
+
+      <div id="screen-pause" class="screen">
+        <div class="panel">
+          <h2>Paused</h2>
+          <button id="btn-resume">Resume</button>
+          <button id="btn-restart">Restart</button>
+          <button id="btn-quit">Quit</button>
+        </div>
+      </div>
+
+      <div id="screen-gameover" class="screen">
+        <div class="panel">
+          <h2 id="gameover-title">Game Over</h2>
+          <p id="gameover-summary"></p>
+          <p id="gameover-stars"></p>
+          <button id="btn-gameover-restart">Restart</button>
+          <button id="btn-gameover-levels">Level Select</button>
+          <button id="btn-gameover-main">Main Menu</button>
+        </div>
+      </div>
+
+      <!-- HUD -->
+      <div id="hud">
+        <div id="hud-top">
+          <div id="hud-coins">
+            <div class="icon-coin"></div>
+            <span id="hud-coin-count">0</span>
+          </div>
+          <div id="hud-distance">
+            <span id="hud-distance-current">0m</span>
+            <span id="hud-distance-best">Best: 0m</span>
+          </div>
+          <button id="btn-pause" class="hud-button">II</button>
+        </div>
+        <div id="hud-bottom">
+          <button id="btn-brake" class="pedal pedal-left">Brake</button>
+          <div id="hud-gauges">
+            <canvas id="gauge-rpm" width="90" height="90"></canvas>
+            <canvas id="gauge-fuel" width="90" height="90"></canvas>
+            <canvas id="gauge-boost" width="90" height="90"></canvas>
+          </div>
+          <button id="btn-gas" class="pedal pedal-right">Gas</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+  </html>
+

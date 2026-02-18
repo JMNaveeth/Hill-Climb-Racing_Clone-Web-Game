@@ -1,0 +1,305 @@
+// ui.js - Menus, screens, transitions, vehicle and level selection
+
+import { vehicles } from "./vehicles.js";
+
+export function initUI(api) {
+  const mainMenu = document.getElementById("screen-main-menu");
+  const levelSelect = document.getElementById("screen-level-select");
+  const garage = document.getElementById("screen-garage");
+  const pauseScreen = document.getElementById("screen-pause");
+  const gameoverScreen = document.getElementById("screen-gameover");
+
+  const screens = {
+    main: mainMenu,
+    level: levelSelect,
+    garage,
+    pause: pauseScreen,
+    gameover: gameoverScreen,
+  };
+
+  function showScreen(name) {
+    Object.values(screens).forEach((el) => {
+      if (!el) return;
+      el.classList.remove("active");
+    });
+    if (screens[name]) screens[name].classList.add("active");
+  }
+
+  showScreen("main");
+
+  const btnPlay = document.getElementById("btn-play");
+  const btnGarage = document.getElementById("btn-garage");
+  const btnLevels = document.getElementById("btn-levels");
+  const btnSettings = document.getElementById("btn-settings");
+  const btnLeaderboard = document.getElementById("btn-leaderboard");
+
+  if (btnPlay) {
+    btnPlay.onclick = () => {
+      const sel = api.getCurrentSelection();
+      api.startRun({ levelId: sel.levelId, vehicleId: sel.vehicleId });
+      showScreen(null);
+    };
+  }
+  if (btnGarage) {
+    btnGarage.onclick = () => {
+      showScreen("garage");
+      renderGarage();
+    };
+  }
+  if (btnLevels) {
+    btnLevels.onclick = () => {
+      showScreen("level");
+      renderLevelSelect();
+    };
+  }
+  if (btnSettings) {
+    btnSettings.onclick = () => {
+      alert("Settings coming soon.");
+    };
+  }
+  if (btnLeaderboard) {
+    btnLeaderboard.onclick = () => {
+      alert("Local-only leaderboard in this demo.");
+    };
+  }
+
+  document.querySelectorAll(".btn-back").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-target");
+      Object.values(screens).forEach((el) => el && el.classList.remove("active"));
+      const el = document.getElementById(targetId);
+      if (el) el.classList.add("active");
+    });
+  });
+
+  const btnPause = document.getElementById("btn-pause");
+  if (btnPause) {
+    btnPause.onclick = () => {
+      window.dispatchEvent(new Event("game:pause"));
+      showScreen("pause");
+    };
+  }
+
+  const btnResume = document.getElementById("btn-resume");
+  const btnRestart = document.getElementById("btn-restart");
+  const btnQuit = document.getElementById("btn-quit");
+  if (btnResume) {
+    btnResume.onclick = () => {
+      showScreen(null);
+      window.dispatchEvent(new Event("game:resume"));
+    };
+  }
+  if (btnRestart) {
+    btnRestart.onclick = () => {
+      showScreen(null);
+      window.dispatchEvent(new Event("game:restart"));
+    };
+  }
+  if (btnQuit) {
+    btnQuit.onclick = () => {
+      showScreen("main");
+      window.dispatchEvent(new Event("game:quit"));
+    };
+  }
+
+  const gameoverTitle = document.getElementById("gameover-title");
+  const gameoverSummary = document.getElementById("gameover-summary");
+  const gameoverStars = document.getElementById("gameover-stars");
+
+  const btnGoRestart = document.getElementById("btn-gameover-restart");
+  const btnGoLevels = document.getElementById("btn-gameover-levels");
+  const btnGoMain = document.getElementById("btn-gameover-main");
+
+  if (btnGoRestart) {
+    btnGoRestart.onclick = () => {
+      showScreen(null);
+      window.dispatchEvent(new Event("game:restart"));
+    };
+  }
+  if (btnGoLevels) {
+    btnGoLevels.onclick = () => {
+      showScreen("level");
+      renderLevelSelect();
+      window.dispatchEvent(new Event("game:quit"));
+    };
+  }
+  if (btnGoMain) {
+    btnGoMain.onclick = () => {
+      showScreen("main");
+      window.dispatchEvent(new Event("game:quit"));
+    };
+  }
+
+  window.addEventListener("game:run-ended", (ev) => {
+    const d = ev.detail;
+    if (!d) return;
+    if (gameoverTitle) {
+      gameoverTitle.textContent = d.reachedFinish ? "Level Complete!" : "Game Over";
+    }
+    if (gameoverSummary) {
+      gameoverSummary.textContent = `Distance: ${d.distance.toFixed(
+        1
+      )} m  |  Best: ${d.bestDistance.toFixed(1)} m  |  Coins: +${
+        d.coinsEarned
+      }`;
+    }
+    if (gameoverStars) {
+      const starsStr = "★".repeat(d.stars) + "☆".repeat(3 - d.stars);
+      gameoverStars.textContent = starsStr;
+    }
+    showScreen("gameover");
+  });
+
+  const levelGrid = document.getElementById("level-grid");
+  function renderLevelSelect() {
+    if (!levelGrid) return;
+    const data = api.getLevels();
+    const st = api.storage;
+    levelGrid.innerHTML = "";
+    for (const level of data) {
+      const div = document.createElement("button");
+      div.className = "level-tile";
+      div.classList.add(level.difficulty);
+      const unlocked = isLevelUnlocked(level.id, st);
+      if (!unlocked) {
+        div.classList.add("locked");
+        const lock = document.createElement("div");
+        lock.className = "lock";
+        lock.textContent = "🔒";
+        div.appendChild(lock);
+      }
+      const stars = st.getLevelStars(level.id) || 0;
+      div.innerHTML += `<div>${level.id}</div><div style="font-size:0.6rem">${level.name}</div><div style="font-size:0.6rem">${"★".repeat(
+        stars
+      )}${"☆".repeat(3 - stars)}</div>`;
+      if (unlocked) {
+        div.onclick = () => {
+          api.selectLevel(level.id);
+          const selVehicle = api.getCurrentSelection().vehicleId;
+          api.storage.setLastSelected(level.id, selVehicle);
+          api.startRun({ levelId: level.id, vehicleId: selVehicle });
+          showScreen(null);
+        };
+      }
+      levelGrid.appendChild(div);
+    }
+  }
+
+  const vehicleCarousel = document.getElementById("vehicle-carousel");
+  const vehicleStats = document.getElementById("vehicle-stats");
+  const btnUnlockVehicle = document.getElementById("btn-unlock-vehicle");
+  const btnSelectVehicle = document.getElementById("btn-select-vehicle");
+
+  let vehicleIndex = 0;
+
+  function renderGarage() {
+    if (!vehicleCarousel || !vehicleStats) return;
+    const st = api.storage;
+    vehicleCarousel.innerHTML = "";
+
+    const v = vehicles[vehicleIndex];
+    const unlocked = st.isVehicleUnlocked(v.id) || v.defaultUnlocked;
+    if (v.defaultUnlocked && !st.isVehicleUnlocked(v.id)) {
+      st.unlockVehicle(v.id);
+    }
+
+    const left = document.createElement("button");
+    left.textContent = "<";
+    left.style.width = "40px";
+    left.onclick = () => {
+      vehicleIndex = (vehicleIndex - 1 + vehicles.length) % vehicles.length;
+      renderGarage();
+    };
+
+    const right = document.createElement("button");
+    right.textContent = ">";
+    right.style.width = "40px";
+    right.onclick = () => {
+      vehicleIndex = (vehicleIndex + 1) % vehicles.length;
+      renderGarage();
+    };
+
+    const center = document.createElement("div");
+    center.style.flex = "1";
+    center.style.textAlign = "center";
+    center.innerHTML = `<div style="font-weight:700;margin-bottom:4px">${v.name}</div>
+      <div style="font-size:0.75rem;opacity:0.8">${v.type === "car" ? "Car" : "Motorbike"}</div>
+      <div style="margin-top:6px;font-size:0.7rem;opacity:0.7">${
+        unlocked ? "Unlocked" : `Locked • Cost: ${v.cost} coins`
+      }</div>`;
+
+    vehicleCarousel.appendChild(left);
+    vehicleCarousel.appendChild(center);
+    vehicleCarousel.appendChild(right);
+
+    vehicleStats.innerHTML = "";
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = makeStatRow("Speed", v.stats.speed) +
+      makeStatRow("Accel", v.stats.acceleration) +
+      makeStatRow("Fuel Eff.", v.stats.fuelEfficiency) +
+      makeStatRow("Grip", v.stats.grip) +
+      makeStatRow("Traction", v.stats.traction);
+    vehicleStats.appendChild(wrapper);
+
+    if (btnUnlockVehicle) {
+      btnUnlockVehicle.disabled = unlocked;
+      btnUnlockVehicle.textContent = unlocked
+        ? "Unlocked"
+        : `Unlock for ${v.cost} coins`;
+    }
+    if (btnSelectVehicle) {
+      btnSelectVehicle.disabled = !unlocked;
+    }
+  }
+
+  function makeStatRow(label, value) {
+    const pct = Math.max(10, Math.min(10, value)) * 10;
+    return `<div class="stat-row">
+      <span>${label}</span>
+      <div class="stat-bar">
+        <div class="stat-bar-fill" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }
+
+  if (btnUnlockVehicle) {
+    btnUnlockVehicle.onclick = () => {
+      const st = api.storage;
+      const v = vehicles[vehicleIndex];
+      const unlocked = st.isVehicleUnlocked(v.id);
+      if (unlocked) return;
+      if (st.getCoins() >= v.cost) {
+        st.addCoins(-v.cost);
+        st.unlockVehicle(v.id);
+        alert(`Unlocked ${v.name}!`);
+        renderGarage();
+      } else {
+        alert("Not enough coins.");
+      }
+    };
+  }
+
+  if (btnSelectVehicle) {
+    btnSelectVehicle.onclick = () => {
+      const v = vehicles[vehicleIndex];
+      const st = api.storage;
+      const unlocked = st.isVehicleUnlocked(v.id);
+      if (!unlocked) return;
+      api.selectVehicle(v.id);
+      const sel = api.getCurrentSelection();
+      api.storage.setLastSelected(sel.levelId, v.id);
+      alert(`${v.name} selected.`);
+    };
+  }
+
+  function isLevelUnlocked(levelId, storage) {
+    if (levelId === 1) return true;
+    if (levelId <= 3) return true;
+    const prevStars = storage.getLevelStars(levelId - 1) || 0;
+    const totalStarsBefore = Object.entries(storage.getAll().levelStars || {})
+      .filter(([id]) => Number(id) < levelId)
+      .reduce((acc, [, s]) => acc + s, 0);
+    return prevStars >= 2 || totalStarsBefore >= levelId;
+  }
+}
+
