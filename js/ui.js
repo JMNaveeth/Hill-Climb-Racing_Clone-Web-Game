@@ -7,6 +7,7 @@ export function initUI(api) {
   const levelSelect = document.getElementById("screen-level-select");
   const garage = document.getElementById("screen-garage");
   const pauseScreen = document.getElementById("screen-pause");
+  const adScreen = document.getElementById("screen-ad");
   const gameoverScreen = document.getElementById("screen-gameover");
 
   const screens = {
@@ -14,6 +15,7 @@ export function initUI(api) {
     level: levelSelect,
     garage,
     pause: pauseScreen,
+    ad: adScreen,
     gameover: gameoverScreen,
   };
 
@@ -105,6 +107,10 @@ export function initUI(api) {
   const gameoverTitle = document.getElementById("gameover-title");
   const gameoverSummary = document.getElementById("gameover-summary");
   const gameoverStars = document.getElementById("gameover-stars");
+  const btnAdContinue = document.getElementById("btn-ad-continue");
+  const adSlot = document.getElementById("ad-slot-interstitial");
+
+  let pendingResult = null;
 
   const btnGoRestart = document.getElementById("btn-gameover-restart");
   const btnGoLevels = document.getElementById("btn-gameover-levels");
@@ -130,8 +136,7 @@ export function initUI(api) {
     };
   }
 
-  window.addEventListener("game:run-ended", (ev) => {
-    const d = ev.detail;
+  function showGameoverFromResult(d) {
     if (!d) return;
     if (gameoverTitle) {
       gameoverTitle.textContent = d.reachedFinish ? "Level Complete!" : "Game Over";
@@ -148,6 +153,48 @@ export function initUI(api) {
       gameoverStars.textContent = starsStr;
     }
     showScreen("gameover");
+  }
+
+  function showAdThenGameover(resultDetail) {
+    pendingResult = resultDetail;
+    if (!adScreen || !adSlot) {
+      showGameoverFromResult(pendingResult);
+      return;
+    }
+
+    showScreen("ad");
+
+    if (!window.gameAds) {
+      window.gameAds = {};
+    }
+
+    window.gameAds.requestInterstitial = window.gameAds.requestInterstitial || function (done) {
+      setTimeout(done, 2500);
+    };
+
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      showGameoverFromResult(pendingResult);
+      pendingResult = null;
+    };
+
+    if (btnAdContinue) {
+      btnAdContinue.onclick = () => done();
+    }
+
+    try {
+      window.gameAds.requestInterstitial(done);
+    } catch {
+      setTimeout(done, 2000);
+    }
+  }
+
+  window.addEventListener("game:run-ended", (ev) => {
+    const d = ev.detail;
+    if (!d) return;
+    showAdThenGameover(d);
   });
 
   const levelGrid = document.getElementById("level-grid");

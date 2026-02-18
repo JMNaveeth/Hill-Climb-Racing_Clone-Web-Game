@@ -281,6 +281,14 @@ button {
   pointer-events: none;
 }
 
+.ad-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  opacity: 0.65;
+  margin-bottom: 4px;
+}
+
 @media (max-width: 640px) {
   .panel {
     min-width: 90vw;
