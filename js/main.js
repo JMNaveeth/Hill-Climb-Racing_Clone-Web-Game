@@ -96,11 +96,21 @@ async function initCore() {
 }
 
 function startRun({ levelId, vehicleId }) {
-  currentLevelId = levelId ?? currentLevelId;
-  currentVehicleId = vehicleId ?? currentVehicleId;
+  try {
+    currentLevelId = levelId ?? currentLevelId;
+    currentVehicleId = vehicleId ?? currentVehicleId;
 
-  const level = getLevelById(currentLevelId);
-  const vehicle = vehicles.find(v => v.id === currentVehicleId) || vehicles[0];
+    const level = getLevelById(currentLevelId);
+    if (!level) {
+      console.error('Level not found:', currentLevelId);
+      return;
+    }
+    
+    const vehicle = vehicles.find(v => v.id === currentVehicleId) || vehicles[0];
+    if (!vehicle) {
+      console.error('Vehicle not found:', currentVehicleId);
+      return;
+    }
 
   setWorldGravity(world, level.gravity);
 
@@ -134,12 +144,17 @@ function startRun({ levelId, vehicleId }) {
 
   audioManager.startEngine();
 
-  // Notify platform SDK that gameplay started
-  if (platform) {
-    platform.gameplayStart();
-  }
+    // Notify platform SDK that gameplay started
+    if (platform) {
+      platform.gameplayStart();
+    }
 
-  currentState = GAME_STATE.RUNNING;
+    currentState = GAME_STATE.RUNNING;
+    console.log('Game started successfully');
+  } catch (error) {
+    console.error('Error starting run:', error);
+    alert('Failed to start game: ' + error.message);
+  }
 }
 
 function restartRun() {
@@ -166,10 +181,14 @@ function selectVehicle(vehicleId) {
 }
 
 function clearWorld() {
-  if (!world) return;
-  const allBodies = Matter.Composite.allBodies(world);
-  for (const b of allBodies) {
-    Matter.World.remove(world, b);
+  if (!world || !Matter) return;
+  try {
+    const allBodies = Matter.Composite.allBodies(world);
+    for (const b of allBodies) {
+      Matter.World.remove(world, b);
+    }
+  } catch (error) {
+    console.warn('Error clearing world:', error);
   }
 }
 
@@ -319,7 +338,45 @@ window.addEventListener("game:quit", () => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-  initCore();
+  // Check if running from file:// protocol
+  if (window.location.protocol === 'file:') {
+    const errorMsg = `
+      <div style="padding:40px;text-align:center;font-family:sans-serif;background:#1a1a1a;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;">
+        <div>
+          <h1 style="color:#ff4444;">⚠️ Web Server Required</h1>
+          <p style="font-size:18px;margin:20px 0;">This game must be run from a web server, not directly from file://</p>
+          <div style="background:#2a2a2a;padding:20px;border-radius:8px;text-align:left;max-width:600px;margin:20px auto;">
+            <h3>Quick Solutions:</h3>
+            <p><strong>Python:</strong> <code style="background:#333;padding:4px 8px;border-radius:4px;">python -m http.server 8000</code></p>
+            <p><strong>Node.js:</strong> <code style="background:#333;padding:4px 8px;border-radius:4px;">npx serve</code></p>
+            <p><strong>VS Code:</strong> Install "Live Server" extension</p>
+            <p style="margin-top:20px;">Then open: <code style="background:#333;padding:4px 8px;border-radius:4px;">http://localhost:8000/index.html</code></p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.innerHTML = errorMsg;
+    return;
+  }
+  
+  // Check if Matter.js is loaded
+  if (typeof Matter === 'undefined') {
+    console.error('Matter.js not loaded! Make sure the CDN script is included.');
+    document.body.innerHTML = '<div style="padding:20px;color:red;"><h1>Error</h1><p>Matter.js physics library failed to load. Please check your internet connection.</p></div>';
+    return;
+  }
+  
+  // Check if canvas exists
+  if (!canvas || !ctx) {
+    console.error('Canvas not found!');
+    return;
+  }
+  
+  console.log('Starting game initialization...');
+  initCore().catch(error => {
+    console.error('Critical initialization error:', error);
+    alert('Game failed to initialize. Please check console for details.');
+  });
   requestAnimationFrame(loop);
 });
 

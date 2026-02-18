@@ -3,12 +3,19 @@
 import { vehicles } from "./vehicles.js";
 
 export function initUI(api) {
+  console.log('Initializing UI...');
+  
   const mainMenu = document.getElementById("screen-main-menu");
   const levelSelect = document.getElementById("screen-level-select");
   const garage = document.getElementById("screen-garage");
   const pauseScreen = document.getElementById("screen-pause");
   const adScreen = document.getElementById("screen-ad");
   const gameoverScreen = document.getElementById("screen-gameover");
+  
+  if (!mainMenu || !levelSelect || !garage) {
+    console.error('Critical UI elements missing!');
+    return;
+  }
 
   const screens = {
     main: mainMenu,
@@ -28,6 +35,13 @@ export function initUI(api) {
   }
 
   showScreen("main");
+  
+  // Verify vehicles are loaded
+  if (!vehicles || vehicles.length === 0) {
+    console.error('Vehicles array is empty or not loaded!');
+  } else {
+    console.log('Loaded', vehicles.length, 'vehicles');
+  }
 
   const btnPlay = document.getElementById("btn-play");
   const btnGarage = document.getElementById("btn-garage");
@@ -37,16 +51,28 @@ export function initUI(api) {
 
   if (btnPlay) {
     btnPlay.onclick = () => {
-      const sel = api.getCurrentSelection();
-      api.startRun({ levelId: sel.levelId, vehicleId: sel.vehicleId });
-      showScreen(null);
+      console.log('Play button clicked');
+      try {
+        const sel = api.getCurrentSelection();
+        console.log('Starting run with:', sel);
+        api.startRun({ levelId: sel.levelId, vehicleId: sel.vehicleId });
+        showScreen(null);
+      } catch (error) {
+        console.error('Error starting game:', error);
+        alert('Failed to start game. Check console for details.');
+      }
     };
+  } else {
+    console.error('Play button not found!');
   }
   if (btnGarage) {
     btnGarage.onclick = () => {
+      console.log('Garage button clicked');
       showScreen("garage");
       renderGarage();
     };
+  } else {
+    console.error('Garage button not found!');
   }
   if (btnLevels) {
     btnLevels.onclick = () => {
@@ -245,11 +271,25 @@ export function initUI(api) {
   let vehicleIndex = 0;
 
   function renderGarage() {
-    if (!vehicleCarousel || !vehicleStats) return;
+    if (!vehicleCarousel || !vehicleStats) {
+      console.error('Garage elements not found');
+      return;
+    }
+    
+    if (!vehicles || vehicles.length === 0) {
+      console.error('Vehicles array is empty');
+      vehicleCarousel.innerHTML = '<div>No vehicles available</div>';
+      return;
+    }
+    
     const st = api.storage;
     vehicleCarousel.innerHTML = "";
 
     const v = vehicles[vehicleIndex];
+    if (!v) {
+      console.error('Vehicle at index', vehicleIndex, 'not found');
+      return;
+    }
     const unlocked = st.isVehicleUnlocked(v.id) || v.defaultUnlocked;
     if (v.defaultUnlocked && !st.isVehicleUnlocked(v.id)) {
       st.unlockVehicle(v.id);
@@ -312,7 +352,8 @@ export function initUI(api) {
   }
 
   function makeStatRow(label, value) {
-    const pct = Math.max(10, Math.min(10, value)) * 10;
+    // Value is 1-10, convert to percentage (0-100%)
+    const pct = Math.max(0, Math.min(100, (value / 10) * 100));
     return `<div class="stat-row">
       <span>${label}</span>
       <div class="stat-bar">

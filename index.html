@@ -12,22 +12,35 @@
     <script>
       // Auto-detect and load platform SDKs
       (function() {
-        const hostname = window.parent !== window ? window.parent.location.hostname : window.location.hostname;
-        
-        // Load Poki SDK if on Poki or if Poki SDK is expected
-        if (hostname.includes('poki.com') || window.location.search.includes('poki=true')) {
-          const pokiScript = document.createElement('script');
-          pokiScript.src = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js';
-          pokiScript.async = true;
-          document.head.appendChild(pokiScript);
-        }
-        
-        // Load CrazyGames SDK if on CrazyGames or if CrazyGames SDK is expected
-        if (hostname.includes('crazygames.com') || window.location.search.includes('crazygames=true')) {
-          const cgScript = document.createElement('script');
-          cgScript.src = 'https://sdk.crazygames.com/crazygames-sdk-v2.js';
-          cgScript.async = true;
-          document.head.appendChild(cgScript);
+        try {
+          let hostname = window.location.hostname;
+          try {
+            if (window.parent !== window) {
+              hostname = window.parent.location.hostname;
+            }
+          } catch (e) {
+            // Cross-origin, use current hostname
+          }
+          
+          // Load Poki SDK if on Poki or if Poki SDK is expected
+          if (hostname.includes('poki.com') || window.location.search.includes('poki=true')) {
+            const pokiScript = document.createElement('script');
+            pokiScript.src = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js';
+            pokiScript.async = true;
+            pokiScript.onerror = () => console.warn('Failed to load Poki SDK');
+            document.head.appendChild(pokiScript);
+          }
+          
+          // Load CrazyGames SDK if on CrazyGames or if CrazyGames SDK is expected
+          if (hostname.includes('crazygames.com') || window.location.search.includes('crazygames=true')) {
+            const cgScript = document.createElement('script');
+            cgScript.src = 'https://sdk.crazygames.com/crazygames-sdk-v2.js';
+            cgScript.async = true;
+            cgScript.onerror = () => console.warn('Failed to load CrazyGames SDK');
+            document.head.appendChild(cgScript);
+          }
+        } catch (error) {
+          console.warn('Platform detection error:', error);
         }
       })();
     </script>

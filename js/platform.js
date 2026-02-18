@@ -9,21 +9,33 @@ export class PlatformIntegration {
   }
 
   detectPlatform() {
-    // Check if running on Poki
-    if (window.parent !== window && window.parent.location.hostname.includes('poki.com')) {
-      return 'poki';
-    }
-    // Check if Poki SDK is loaded
-    if (typeof PokiSDK !== 'undefined') {
-      return 'poki';
-    }
-    // Check if running on CrazyGames
-    if (window.parent !== window && window.parent.location.hostname.includes('crazygames.com')) {
-      return 'crazygames';
-    }
-    // Check if CrazyGames SDK is loaded
-    if (typeof CrazySDK !== 'undefined') {
-      return 'crazygames';
+    try {
+      // Check if Poki SDK is loaded
+      if (typeof PokiSDK !== 'undefined') {
+        return 'poki';
+      }
+      // Check if CrazyGames SDK is loaded
+      if (typeof CrazySDK !== 'undefined') {
+        return 'crazygames';
+      }
+      // Check if running on Poki (safe check)
+      try {
+        if (window.parent !== window && window.parent.location.hostname.includes('poki.com')) {
+          return 'poki';
+        }
+      } catch (e) {
+        // Cross-origin, ignore
+      }
+      // Check if running on CrazyGames (safe check)
+      try {
+        if (window.parent !== window && window.parent.location.hostname.includes('crazygames.com')) {
+          return 'crazygames';
+        }
+      } catch (e) {
+        // Cross-origin, ignore
+      }
+    } catch (error) {
+      console.warn('Platform detection error:', error);
     }
     return 'standalone';
   }
