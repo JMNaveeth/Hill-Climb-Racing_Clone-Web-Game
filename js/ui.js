@@ -234,29 +234,64 @@ export function initUI(api) {
     showAdThenGameover(d);
   });
 
+  const THEME_ICONS = {
+    pastelFields:'🛣️', pastelHills:'⛰️', beach:'🏖️', farm:'🌾', cliffs:'🪨',
+    meadow:'🌿', plains:'🌄', orchard:'🍎', lake:'🏞️', forest:'🌲',
+    mountain:'🗻', desert:'🏜️', jungle:'🌴', snow:'❄️', canyon:'🏔️',
+    volcano:'🌋', arctic:'🧊', rainforest:'🌧️', swamp:'🐸', storm:'⛈️',
+    asteroid:'☄️', cave:'🌑', underwater:'🐠', space:'🚀', lava:'🔥',
+    nightmare:'😱', chaos:'💥', moon:'🌙', inferno:'☠️', final:'🏆',
+  };
+  const DIFF_META = {
+    easy:     { label:'Easy',     color:'#4ade80', glow:'rgba(74,222,128,0.25)' },
+    normal:   { label:'Normal',   color:'#60a5fa', glow:'rgba(96,165,250,0.25)' },
+    hard:     { label:'Hard',     color:'#f87171', glow:'rgba(248,113,113,0.25)' },
+    advanced: { label:'Advanced', color:'#c084fc', glow:'rgba(192,132,252,0.28)' },
+  };
+
   const levelGrid = document.getElementById("level-grid");
   function renderLevelSelect() {
     if (!levelGrid) return;
     const data = api.getLevels();
     const st = api.storage;
     levelGrid.innerHTML = "";
+
+    let lastDiff = null;
     for (const level of data) {
-      const div = document.createElement("button");
-      div.className = "level-tile";
-      div.classList.add(level.difficulty);
-      const unlocked = isLevelUnlocked(level.id, st);
-      if (!unlocked) {
-        div.classList.add("locked");
-        const lock = document.createElement("div");
-        lock.className = "lock";
-        lock.textContent = "🔒";
-        div.appendChild(lock);
+      // ── difficulty section header ──
+      if (level.difficulty !== lastDiff) {
+        lastDiff = level.difficulty;
+        const meta = DIFF_META[level.difficulty] || DIFF_META.easy;
+        const hdr = document.createElement('div');
+        hdr.className = 'level-section-header';
+        hdr.style.setProperty('--diff-color', meta.color);
+        hdr.innerHTML = `<span class="diff-dot"></span>${meta.label}<span class="diff-line"></span>`;
+        levelGrid.appendChild(hdr);
       }
+
+      const unlocked = isLevelUnlocked(level.id, st);
       const stars = st.getLevelStars(level.id) || 0;
-      div.innerHTML += `<div>${level.id}</div><div style="font-size:0.6rem">${level.name}</div><div style="font-size:0.6rem">${"★".repeat(
-        stars
-      )}${"☆".repeat(3 - stars)}</div>`;
+      const icon = THEME_ICONS[level.theme] || '🎮';
+      const meta = DIFF_META[level.difficulty] || DIFF_META.easy;
+
+      const div = document.createElement('button');
+      div.className = `level-tile ${level.difficulty}${unlocked ? '' : ' locked'}`;
+      div.style.setProperty('--diff-color', meta.color);
+      div.style.setProperty('--diff-glow', meta.glow);
+      div.setAttribute('aria-label', `Level ${level.id}: ${level.name}`);
+
+      const starsHtml = Array.from({length:3}, (_,i) =>
+        `<span class="star${i < stars ? ' earned' : ''}">${i < stars ? '★' : '☆'}</span>`
+      ).join('');
+
       if (unlocked) {
+        div.innerHTML = `
+          <div class="lt-icon">${icon}</div>
+          <div class="lt-num">${level.id}</div>
+          <div class="lt-name">${level.name}</div>
+          <div class="lt-stars">${starsHtml}</div>
+          <div class="lt-play-hint">▶ Play</div>
+        `;
         div.onclick = () => {
           api.selectLevel(level.id);
           const selVehicle = api.getCurrentSelection().vehicleId;
@@ -264,6 +299,13 @@ export function initUI(api) {
           api.startRun({ levelId: level.id, vehicleId: selVehicle });
           showScreen(null);
         };
+      } else {
+        div.innerHTML = `
+          <div class="lt-icon lt-lock">🔒</div>
+          <div class="lt-num">${level.id}</div>
+          <div class="lt-name">${level.name}</div>
+          <div class="lt-stars">${starsHtml}</div>
+        `;
       }
       levelGrid.appendChild(div);
     }
