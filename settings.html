@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Settings — Hill Climb Canvas</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;font-family:'Nunito',system-ui,sans-serif;background:#060b1a;color:#f5f5f5;overflow-x:hidden}
+body{background:radial-gradient(ellipse at 30% 0%,rgba(80,30,180,.35) 0%,transparent 55%),radial-gradient(ellipse at 80% 100%,rgba(20,80,200,.35) 0%,transparent 55%),linear-gradient(160deg,#050c22 0%,#08152e 50%,#04091a 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+/* Header */
+.page-header{width:100%;max-width:640px;padding:28px 24px 8px;display:flex;align-items:center;gap:16px}
+.back-btn{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;text-decoration:none}
+.back-btn:hover{background:rgba(99,180,255,.2);border-color:rgba(99,180,255,.7)}
+.page-title{font-family:'Boogaloo',cursive;font-size:2rem;letter-spacing:.08em;background:linear-gradient(90deg,#63caff,#a78bfa,#34d399,#63caff);background-size:300% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 4s linear infinite}
+
+/* Sections */
+.section{width:100%;max-width:640px;padding:0 20px;margin-top:20px}
+.section-label{font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(99,180,255,.7);margin-bottom:10px;padding-left:4px}
+.section-card{background:rgba(8,14,35,.9);border:1px solid rgba(99,180,255,.12);border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+
+/* Row */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.05);gap:12px}
+.setting-row:last-child{border-bottom:none}
+.setting-info{display:flex;flex-direction:column;gap:3px;flex:1}
+.setting-name{font-size:.92rem;font-weight:800;color:#f0f0f0}
+.setting-desc{font-size:.68rem;color:rgba(255,255,255,.45);letter-spacing:.04em}
+
+/* Toggle */
+.toggle{position:relative;width:52px;height:28px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{display:block;width:52px;height:28px;background:rgba(255,255,255,.1);border-radius:999px;cursor:pointer;transition:background .25s;border:1.5px solid rgba(255,255,255,.12)}
+.toggle input:checked~.toggle-track{background:linear-gradient(135deg,#22c55e,#16a34a);border-color:rgba(52,211,153,.5);box-shadow:0 0 12px rgba(34,197,94,.4)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .25s;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.toggle input:checked~.toggle-thumb{left:27px}
+
+/* Slider */
+.slider-wrap{display:flex;align-items:center;gap:10px;flex:0 0 160px}
+.slider-val{font-family:'Orbitron',monospace;font-size:.75rem;color:#ffd700;min-width:36px;text-align:right}
+input[type=range]{flex:1;-webkit-appearance:none;height:5px;border-radius:5px;background:rgba(255,255,255,.15);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#63caff,#a78bfa);cursor:pointer;box-shadow:0 2px 8px rgba(99,180,255,.5)}
+
+/* Select */
+select.setting-select{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#fff;padding:8px 12px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;outline:none;transition:border-color .2s}
+select.setting-select:focus{border-color:#63caff}
+select.setting-select option{background:#0d1628;color:#fff}
+
+/* Danger button */
+.btn-danger{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;padding:13px 24px;border-radius:12px;font-family:'Orbitron',monospace;font-size:.72rem;letter-spacing:.12em;cursor:pointer;transition:all .2s;box-shadow:0 6px 20px rgba(239,68,68,.35)}
+.btn-danger:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(239,68,68,.5)}
+.btn-danger:active{transform:scale(.97)}
+
+/* Toast */
+#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(34,197,94,.95);color:#fff;padding:12px 28px;border-radius:30px;font-weight:800;font-size:.85rem;letter-spacing:.06em;opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html" class="back-btn">&#8249;</a>
+  <h1 class="page-title">⚙️ Settings</h1>
+</div>
+
+<!-- AUDIO -->
+<div class="section">
+  <div class="section-label">Audio</div>
+  <div class="section-card">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🎵 Music</div><div class="setting-desc">Background music during gameplay</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-music" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🔊 Sound Effects</div><div class="setting-desc">Coin, fuel, crash and boost sounds</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-sfx" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🎚️ Music Volume</div><div class="setting-desc">Overall background music level</div></div>
+      <div class="slider-wrap"><input type="range" id="opt-music-vol" min="0" max="100" value="70"><span class="slider-val" id="music-vol-val">70%</span></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🔉 SFX Volume</div><div class="setting-desc">Sound effects and engine volume</div></div>
+      <div class="slider-wrap"><input type="range" id="opt-sfx-vol" min="0" max="100" value="80"><span class="slider-val" id="sfx-vol-val">80%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- GRAPHICS -->
+<div class="section">
+  <div class="section-label">Graphics</div>
+  <div class="section-card">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">✨ Particle Effects</div><div class="setting-desc">Exhaust smoke, sparkles and dust</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-particles" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🖥️ Graphics Quality</div><div class="setting-desc">Rendering quality (affects performance)</div></div>
+      <select class="setting-select" id="opt-quality">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="section">
+  <div class="section-label">Controls</div>
+  <div class="section-card">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">📱 Touch Controls</div><div class="setting-desc">Show on-screen gas/brake buttons</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-touch" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">📳 Haptic Feedback</div><div class="setting-desc">Vibrate on collisions (mobile only)</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-haptic"><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+  </div>
+</div>
+
+<!-- GAMEPLAY -->
+<div class="section">
+  <div class="section-label">Gameplay</div>
+  <div class="section-card">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">📏 Show Distance</div><div class="setting-desc">Display distance travelled in HUD</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-distance" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">⏱️ Show FPS</div><div class="setting-desc">Display frame rate counter</div></div>
+      <label class="toggle"><input type="checkbox" id="opt-fps"><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🌐 Language</div><div class="setting-desc">Interface language</div></div>
+      <select class="setting-select" id="opt-language">
+        <option value="en" selected>English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="pt">Português</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+        <option value="zh">中文</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- DATA -->
+<div class="section">
+  <div class="section-label">Data</div>
+  <div class="section-card">
+    <div class="setting-row">
+      <div class="setting-info"><div class="setting-name">🗑️ Reset Progress</div><div class="setting-desc">Delete all save data, coins, unlocks and best distances</div></div>
+      <button class="btn-danger" id="btn-reset">Reset All</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">Settings saved!</div>
+
+<script>
+const STORAGE_KEY = 'hillclimb_canvas_save_v1';
+const SETTINGS_KEY = 'hillclimb_settings_v1';
+
+const defaults = {
+  music: true, sfx: true,
+  musicVol: 70, sfxVol: 80,
+  particles: true, quality: 'medium',
+  touch: true, haptic: false,
+  distance: true, fps: false,
+  language: 'en'
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults };
+  } catch { return { ...defaults }; }
+}
+
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {}
+}
+
+function showToast(msg = 'Settings saved!') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function applySettings(s) {
+  document.getElementById('opt-music').checked = s.music;
+  document.getElementById('opt-sfx').checked = s.sfx;
+  document.getElementById('opt-music-vol').value = s.musicVol;
+  document.getElementById('sfx-vol-val').textContent = s.sfxVol + '%';
+  document.getElementById('opt-sfx-vol').value = s.sfxVol;
+  document.getElementById('music-vol-val').textContent = s.musicVol + '%';
+  document.getElementById('opt-particles').checked = s.particles;
+  document.getElementById('opt-quality').value = s.quality;
+  document.getElementById('opt-touch').checked = s.touch;
+  document.getElementById('opt-haptic').checked = s.haptic;
+  document.getElementById('opt-distance').checked = s.distance;
+  document.getElementById('opt-fps').checked = s.fps;
+  document.getElementById('opt-language').value = s.language;
+}
+
+let settings = loadSettings();
+applySettings(settings);
+
+// Wire up all inputs
+function wire(id, key, transform) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', () => {
+    settings[key] = transform ? transform(el) : el.checked;
+    saveSettings(settings);
+    showToast();
+  });
+}
+
+wire('opt-music', 'music');
+wire('opt-sfx', 'sfx');
+wire('opt-particles', 'particles');
+wire('opt-touch', 'touch');
+wire('opt-haptic', 'haptic');
+wire('opt-distance', 'distance');
+wire('opt-fps', 'fps');
+wire('opt-quality', 'quality', el => el.value);
+wire('opt-language', 'language', el => el.value);
+
+document.getElementById('opt-music-vol').addEventListener('input', function() {
+  document.getElementById('music-vol-val').textContent = this.value + '%';
+  settings.musicVol = +this.value;
+  saveSettings(settings);
+  showToast();
+});
+document.getElementById('opt-sfx-vol').addEventListener('input', function() {
+  document.getElementById('sfx-vol-val').textContent = this.value + '%';
+  settings.sfxVol = +this.value;
+  saveSettings(settings);
+  showToast();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!confirm('Reset ALL progress? This cannot be undone!')) return;
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY); } catch {}
+  settings = { ...defaults };
+  applySettings(settings);
+  showToast('Progress reset!');
+});
+</script>
+</body>
+</html>

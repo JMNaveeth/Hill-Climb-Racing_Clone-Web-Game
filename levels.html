@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Level Select — Hill Climb Canvas</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100%;font-family:'Nunito',system-ui,sans-serif;background:#060b1a;color:#f5f5f5;overflow-x:hidden}
+body{background:radial-gradient(ellipse at 30% 0%,rgba(80,30,180,.35) 0%,transparent 55%),radial-gradient(ellipse at 80% 100%,rgba(20,80,200,.35) 0%,transparent 55%),linear-gradient(160deg,#050c22 0%,#08152e 50%,#04091a 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+.page-header{width:100%;max-width:760px;padding:24px 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.back-btn{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;text-decoration:none}
+.back-btn:hover{background:rgba(99,180,255,.2);border-color:rgba(99,180,255,.7)}
+.page-title{font-family:'Boogaloo',cursive;font-size:2rem;letter-spacing:.08em;background:linear-gradient(90deg,#63caff,#a78bfa,#34d399,#63caff);background-size:300% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 4s linear infinite}
+.header-info{display:flex;align-items:center;gap:12px}
+.info-pill{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-family:'Orbitron',monospace;font-size:.72rem;font-weight:700}
+.coin-pill{background:rgba(255,215,0,.12);border:1.5px solid rgba(255,215,0,.3);color:#ffd700}
+.star-pill{background:rgba(251,191,36,.1);border:1.5px solid rgba(251,191,36,.3);color:#fbbf24}
+
+.content{width:100%;max-width:760px;padding:12px 20px 40px}
+
+.diff-header{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-family:'Orbitron',monospace;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em}
+.diff-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.diff-line{flex:1;height:1px;opacity:.3}
+
+.level-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media(max-width:480px){.level-grid{grid-template-columns:repeat(4,1fr)}}
+
+.level-tile{position:relative;padding:10px 6px 8px;border-radius:14px;font-size:.62rem;text-align:center;background:rgba(15,20,45,.9);color:#f0f0f0;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:transform .14s cubic-bezier(.34,1.56,.64,1),box-shadow .15s ease,border-color .15s ease;overflow:hidden;user-select:none}
+.level-tile::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 50% 0%,var(--diff-glow,transparent) 0%,transparent 65%);pointer-events:none}
+.level-tile::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:14px 14px 0 0;background:var(--diff-color,transparent);opacity:.7;box-shadow:0 0 8px var(--diff-color,transparent)}
+.level-tile:not(.locked):hover{transform:translateY(-5px) scale(1.06);box-shadow:0 12px 28px var(--diff-glow,rgba(0,0,0,.3)),0 0 0 1px var(--diff-color,transparent);border-color:var(--diff-color);z-index:2}
+.level-tile:not(.locked):active{transform:translateY(0) scale(.97)}
+.level-tile.locked{opacity:.45;filter:saturate(.3);cursor:not-allowed}
+.level-tile.easy{--diff-color:#4ade80;--diff-glow:rgba(74,222,128,.25)}
+.level-tile.normal{--diff-color:#60a5fa;--diff-glow:rgba(96,165,250,.25)}
+.level-tile.hard{--diff-color:#f87171;--diff-glow:rgba(248,113,113,.25)}
+.level-tile.advanced{--diff-color:#c084fc;--diff-glow:rgba(192,132,252,.28)}
+
+.lt-icon{font-size:1.2rem;line-height:1}
+.lt-num{font-size:1rem;font-weight:800;color:#fff;line-height:1;font-family:'Orbitron',monospace}
+.lt-name{font-size:.52rem;opacity:.75;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lt-stars{display:flex;gap:1px;justify-content:center}
+.lt-stars .star{font-size:.65rem;color:rgba(255,255,255,.2)}
+.lt-stars .star.earned{color:#fbbf24;text-shadow:0 0 8px rgba(251,191,36,.8)}
+
+.lt-play-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:inherit;background:rgba(0,0,0,.65);font-size:.75rem;font-weight:700;color:var(--diff-color);opacity:0;transition:opacity .15s;letter-spacing:.05em;backdrop-filter:blur(3px)}
+.level-tile:not(.locked):hover .lt-play-hint{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html" class="back-btn">&#8249;</a>
+  <h1 class="page-title">🏁 Level Select</h1>
+  <div class="header-info">
+    <div class="info-pill coin-pill">⚡ <span id="coin-count">0</span></div>
+    <div class="info-pill star-pill">★ <span id="star-count">0</span></div>
+  </div>
+</div>
+
+<div class="content" id="level-content"></div>
+
+<script>
+// ─── Level Data ───────────────────────────────────────────────────────────────
+const levels = [
+  {id:1,name:"Country Road",difficulty:"easy",length:2600,coinDensity:.18,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"pastelFields",seed:9973},
+  {id:2,name:"Grassy Hill",difficulty:"easy",length:2700,coinDensity:.2,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"pastelHills",seed:19946},
+  {id:3,name:"Sunny Beach",difficulty:"easy",length:2600,coinDensity:.19,fuelDensity:.1,boostDensity:.05,gravity:1.1,theme:"beach",seed:29919},
+  {id:4,name:"Farm Fields",difficulty:"easy",length:2600,coinDensity:.18,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"farm",seed:39892},
+  {id:5,name:"Seaside Cliffs",difficulty:"easy",length:2800,coinDensity:.17,fuelDensity:.08,boostDensity:.05,gravity:1.2,theme:"cliffs",seed:49865},
+  {id:6,name:"Meadow Run",difficulty:"easy",length:2600,coinDensity:.18,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"meadow",seed:59838},
+  {id:7,name:"Rolling Plains",difficulty:"easy",length:2700,coinDensity:.17,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"plains",seed:69811},
+  {id:8,name:"Orchard Path",difficulty:"easy",length:2600,coinDensity:.18,fuelDensity:.09,boostDensity:.05,gravity:1.2,theme:"orchard",seed:79784},
+  {id:9,name:"Lakeside Drive",difficulty:"easy",length:2700,coinDensity:.18,fuelDensity:.08,boostDensity:.05,gravity:1.2,theme:"lake",seed:89757},
+  {id:10,name:"Gentle Forest",difficulty:"easy",length:2800,coinDensity:.17,fuelDensity:.08,boostDensity:.05,gravity:1.2,theme:"forest",seed:99730},
+  {id:11,name:"Rocky Mountain",difficulty:"normal",length:3200,coinDensity:.15,fuelDensity:.07,boostDensity:.05,gravity:1.3,theme:"mountain",seed:109703},
+  {id:12,name:"Desert Dunes",difficulty:"normal",length:3300,coinDensity:.15,fuelDensity:.07,boostDensity:.06,gravity:1.2,theme:"desert",seed:119676},
+  {id:13,name:"Jungle Trail",difficulty:"normal",length:3200,coinDensity:.15,fuelDensity:.07,boostDensity:.05,gravity:1.3,theme:"jungle",seed:129649},
+  {id:14,name:"Snowy Pass",difficulty:"normal",length:3200,coinDensity:.14,fuelDensity:.06,boostDensity:.05,gravity:1.25,theme:"snow",seed:139622},
+  {id:15,name:"Canyon Run",difficulty:"normal",length:3300,coinDensity:.14,fuelDensity:.06,boostDensity:.05,gravity:1.3,theme:"canyon",seed:149595},
+  {id:16,name:"Volcanic Ridge",difficulty:"normal",length:3400,coinDensity:.13,fuelDensity:.06,boostDensity:.06,gravity:1.35,theme:"volcano",seed:159568},
+  {id:17,name:"Arctic Tundra",difficulty:"normal",length:3400,coinDensity:.13,fuelDensity:.06,boostDensity:.05,gravity:1.2,theme:"arctic",seed:169541},
+  {id:18,name:"Rainforest Rush",difficulty:"normal",length:3300,coinDensity:.14,fuelDensity:.06,boostDensity:.06,gravity:1.3,theme:"rainforest",seed:179514},
+  {id:19,name:"Muddy Swamp",difficulty:"normal",length:3200,coinDensity:.15,fuelDensity:.07,boostDensity:.06,gravity:1.3,theme:"swamp",seed:189487},
+  {id:20,name:"Stormy Cliffs",difficulty:"normal",length:3500,coinDensity:.13,fuelDensity:.05,boostDensity:.06,gravity:1.35,theme:"storm",seed:199460},
+  {id:21,name:"Asteroid Field",difficulty:"hard",length:3800,coinDensity:.11,fuelDensity:.05,boostDensity:.07,gravity:.8,theme:"asteroid",seed:209433},
+  {id:22,name:"Underground Cave",difficulty:"hard",length:3600,coinDensity:.11,fuelDensity:.05,boostDensity:.07,gravity:1.4,theme:"cave",seed:219406},
+  {id:23,name:"Underwater Tunnel",difficulty:"hard",length:3600,coinDensity:.11,fuelDensity:.05,boostDensity:.07,gravity:.7,theme:"underwater",seed:229379},
+  {id:24,name:"Space Launch",difficulty:"hard",length:3800,coinDensity:.10,fuelDensity:.05,boostDensity:.07,gravity:.6,theme:"space",seed:239352},
+  {id:25,name:"Lava World",difficulty:"hard",length:3800,coinDensity:.10,fuelDensity:.05,boostDensity:.07,gravity:1.5,theme:"lava",seed:249325},
+  {id:26,name:"Nightmare Highway",difficulty:"advanced",length:4000,coinDensity:.09,fuelDensity:.04,boostDensity:.08,gravity:1.3,theme:"nightmare",seed:259298},
+  {id:27,name:"Chaos Canyon",difficulty:"advanced",length:4000,coinDensity:.09,fuelDensity:.04,boostDensity:.08,gravity:1.4,theme:"chaos",seed:269271},
+  {id:28,name:"Zero Gravity Moon",difficulty:"advanced",length:4000,coinDensity:.09,fuelDensity:.04,boostDensity:.08,gravity:.4,theme:"moon",seed:279244},
+  {id:29,name:"Inferno Descent",difficulty:"advanced",length:4000,coinDensity:.09,fuelDensity:.04,boostDensity:.08,gravity:1.6,theme:"inferno",seed:289217},
+  {id:30,name:"The Final Summit",difficulty:"advanced",length:4200,coinDensity:.08,fuelDensity:.04,boostDensity:.08,gravity:1.5,theme:"final",seed:299190},
+];
+
+const THEME_ICONS = {
+  pastelFields:'🛣️',pastelHills:'⛰️',beach:'🏖️',farm:'🌾',cliffs:'🪨',
+  meadow:'🌿',plains:'🌄',orchard:'🍎',lake:'🏞️',forest:'🌲',
+  mountain:'🗻',desert:'🏜️',jungle:'🌴',snow:'❄️',canyon:'🏔️',
+  volcano:'🌋',arctic:'🧊',rainforest:'🌧️',swamp:'🐸',storm:'⛈️',
+  asteroid:'☄️',cave:'🌑',underwater:'🐠',space:'🚀',lava:'🔥',
+  nightmare:'😱',chaos:'💥',moon:'🌙',inferno:'☠️',final:'🏆',
+};
+
+const DIFF_META = {
+  easy:    {label:'Easy',    color:'#4ade80',glow:'rgba(74,222,128,.25)'},
+  normal:  {label:'Normal',  color:'#60a5fa',glow:'rgba(96,165,250,.25)'},
+  hard:    {label:'Hard',    color:'#f87171',glow:'rgba(248,113,113,.25)'},
+  advanced:{label:'Advanced',color:'#c084fc',glow:'rgba(192,132,252,.28)'},
+};
+
+// ─── Storage ──────────────────────────────────────────────────────────────────
+const SAVE_KEY = 'hillclimb_canvas_save_v1';
+function loadSave() {
+  try { const r = localStorage.getItem(SAVE_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; }
+}
+function getStars(save, id) { return (save.levelStars && save.levelStars[id]) || 0; }
+function getCoins(save) { return save.coins || 0; }
+function getTotalStars(save) { return Object.values(save.levelStars || {}).reduce((a,s)=>a+(s||0),0); }
+function isUnlocked(id, save) {
+  if (id <= 3) return true;
+  const prevStars = getStars(save, id - 1);
+  const total = Object.entries(save.levelStars || {}).filter(([k])=>+k < id).reduce((a,[,s])=>a+(s||0),0);
+  return prevStars >= 2 || total >= id;
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const save = loadSave();
+  document.getElementById('coin-count').textContent = getCoins(save).toLocaleString();
+  document.getElementById('star-count').textContent = getTotalStars(save);
+
+  const container = document.getElementById('level-content');
+  container.innerHTML = '';
+  let lastDiff = null;
+  let grid = null;
+
+  levels.forEach(lv => {
+    if (lv.difficulty !== lastDiff) {
+      lastDiff = lv.difficulty;
+      const m = DIFF_META[lv.difficulty];
+      const hdr = document.createElement('div');
+      hdr.className = 'diff-header';
+      hdr.style.color = m.color;
+      hdr.innerHTML = `<span class="diff-dot" style="background:${m.color};box-shadow:0 0 6px ${m.color}"></span>${m.label}<span class="diff-line" style="background:linear-gradient(90deg,${m.color} 0%,transparent 100%)"></span>`;
+      container.appendChild(hdr);
+      grid = document.createElement('div');
+      grid.className = 'level-grid';
+      container.appendChild(grid);
+    }
+
+    const unlocked = isUnlocked(lv.id, save);
+    const stars = getStars(save, lv.id);
+    const icon = THEME_ICONS[lv.theme] || '🎮';
+    const m = DIFF_META[lv.difficulty];
+
+    const tile = document.createElement('div');
+    tile.className = `level-tile ${lv.difficulty}${unlocked ? '' : ' locked'}`;
+    const starsHtml = Array.from({length:3},(_,i)=>`<span class="star${i<stars?' earned':''}">${i<stars?'★':'☆'}</span>`).join('');
+
+    tile.innerHTML = `
+      <div class="lt-icon">${unlocked ? icon : '🔒'}</div>
+      <div class="lt-num">${lv.id}</div>
+      <div class="lt-name">${lv.name}</div>
+      <div class="lt-stars">${starsHtml}</div>
+      ${unlocked ? '<div class="lt-play-hint">▶ Play</div>' : ''}
+    `;
+
+    if (unlocked) {
+      tile.addEventListener('click', () => {
+        // Save selected level and navigate
+        try {
+          const s = loadSave();
+          s.lastSelectedLevel = lv.id;
+          localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+        } catch {}
+        window.location.href = `index.html?level=${lv.id}`;
+      });
+    }
+
+    grid.appendChild(tile);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
