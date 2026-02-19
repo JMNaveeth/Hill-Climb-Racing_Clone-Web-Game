@@ -9,6 +9,7 @@ export class GameRenderer {
     this.particles = particles;
     this.width = ctx.canvas.clientWidth || ctx.canvas.width;
     this.height = ctx.canvas.clientHeight || ctx.canvas.height;
+    this._currentVehicle = null;
   }
 
   _drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -37,7 +38,8 @@ export class GameRenderer {
     this._drawBackground({ theme: "pastelFields", cameraX: 0, cameraY: 0 });
   }
 
-  update(dt, { cameraX, cameraY, levelTheme }) {
+  update(dt, { cameraX, cameraY, levelTheme, vehicle }) {
+    this._currentVehicle = vehicle || this._currentVehicle;
     const ctx = this.ctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.width, this.height);
@@ -82,7 +84,7 @@ export class GameRenderer {
     const vehicleBodies = allBodies.filter(
       (b) => b.label === "chassis" || b.label === "wheel"
     );
-    this._drawVehicle(ctx, vehicleBodies, cameraX, cameraY);
+    this._drawVehicle(ctx, vehicleBodies, cameraX, cameraY, this._currentVehicle);
 
     this.particles.update(dt);
     this.particles.draw(ctx, cameraX, cameraY);
@@ -533,55 +535,125 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  _drawVehicle(ctx, bodies, cameraX, cameraY) {
+  _drawVehicle(ctx, bodies, cameraX, cameraY, vehicle) {
     const chassis = bodies.find((b) => b.label === "chassis");
-    const wheels = bodies.filter((b) => b.label === "wheel");
+    const wheels  = bodies.filter((b) => b.label === "wheel");
     if (!chassis) return;
 
+    const bodyColor   = vehicle?.palette?.body   || "#ff8a65";
+    const accentColor = vehicle?.palette?.accent || "#263238";
+    const isBike      = vehicle?.type === "bike";
+
+    // ── Wheels ────────────────────────────────────────────────────
     for (const wheel of wheels) {
       ctx.save();
       ctx.translate(wheel.position.x - cameraX, wheel.position.y - cameraY);
       ctx.rotate(wheel.angle);
       const r = wheel.circleRadius;
-      ctx.fillStyle = "#212121";
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#b0bec5";
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#eceff1";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(r * 0.7, 0);
-      ctx.stroke();
+
+      // Tyre
+      ctx.fillStyle = "#111";
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+
+      // Rim
+      ctx.fillStyle = accentColor;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2); ctx.fill();
+
+      // Hub
+      ctx.fillStyle = "#eee";
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, Math.PI * 2); ctx.fill();
+
+      // Spokes (3)
+      ctx.strokeStyle = "#eee";
+      ctx.lineWidth = isBike ? 1.5 : 2;
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.22, Math.sin(a) * r * 0.22);
+        ctx.lineTo(Math.cos(a) * r * 0.60, Math.sin(a) * r * 0.60);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
+    // ── Chassis ───────────────────────────────────────────────────
     ctx.save();
     ctx.translate(chassis.position.x - cameraX, chassis.position.y - cameraY);
     ctx.rotate(chassis.angle);
     const w = chassis.bounds.max.x - chassis.bounds.min.x;
     const h = chassis.bounds.max.y - chassis.bounds.min.y;
 
-    ctx.fillStyle = "#ff8a65";
-    this._drawRoundedRect(ctx, -w / 2, -h / 2, w, h, 6);
-    ctx.fill();
+    if (isBike) {
+      // Bike: narrow frame diamond
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.7);
+      ctx.lineTo(w * 0.48, 0);
+      ctx.lineTo(0, h * 0.35);
+      ctx.lineTo(-w * 0.48, 0);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    this._drawRoundedRect(ctx, -w * 0.15, -h * 0.9, w * 0.6, h * 0.8, 4);
-    ctx.fill();
+      // Handlebars
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.25, -h * 0.5);
+      ctx.lineTo(w * 0.4, -h * 0.2);
+      ctx.stroke();
 
-    ctx.fillStyle = "#263238";
-    this._drawRoundedRect(ctx, -w * 0.3, -h * 0.1, w * 0.3, h * 0.3, 3);
-    ctx.fill();
+      // Seat
+      ctx.fillStyle = accentColor;
+      this._drawRoundedRect(ctx, -w * 0.28, -h * 0.55, w * 0.32, h * 0.22, 3);
+      ctx.fill();
 
-    ctx.fillStyle = "#ffca28";
-    ctx.beginPath();
-    ctx.arc(w * 0.52 - w / 2, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
+      // Fork
+      ctx.strokeStyle = "#aaa";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.24, -h * 0.1);
+      ctx.lineTo(w * 0.45, h * 0.38);
+      ctx.stroke();
+
+      // Headlight
+      ctx.fillStyle = "rgba(255,240,150,0.9)";
+      ctx.beginPath(); ctx.arc(w * 0.42, -h * 0.15, 4, 0, Math.PI * 2); ctx.fill();
+
+    } else {
+      // Car: main body
+      ctx.fillStyle = bodyColor;
+      this._drawRoundedRect(ctx, -w / 2, -h / 2, w, h, 7);
+      ctx.fill();
+
+      // Accent stripe
+      ctx.fillStyle = accentColor;
+      this._drawRoundedRect(ctx, -w / 2, h * 0.1, w, h * 0.28, 4);
+      ctx.fill();
+
+      // Windshield / cabin
+      ctx.fillStyle = "rgba(160,220,255,0.55)";
+      this._drawRoundedRect(ctx, -w * 0.2, -h * 0.95, w * 0.55, h * 0.75, 5);
+      ctx.fill();
+
+      // Cabin frame
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 1.5;
+      this._drawRoundedRect(ctx, -w * 0.2, -h * 0.95, w * 0.55, h * 0.75, 5);
+      ctx.stroke();
+
+      // Body outline
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.lineWidth = 1;
+      this._drawRoundedRect(ctx, -w / 2, -h / 2, w, h, 7);
+      ctx.stroke();
+
+      // Headlight
+      ctx.fillStyle = "rgba(255,240,150,0.95)";
+      ctx.beginPath(); ctx.arc(w * 0.48, h * 0.05, 4, 0, Math.PI * 2); ctx.fill();
+      // Taillight
+      ctx.fillStyle = "rgba(255,50,50,0.9)";
+      ctx.beginPath(); ctx.arc(-w * 0.48, h * 0.05, 3, 0, Math.PI * 2); ctx.fill();
+    }
 
     ctx.restore();
   }

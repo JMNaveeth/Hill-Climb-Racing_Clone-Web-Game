@@ -36,6 +36,13 @@ let currentState = GAME_STATE.IDLE;
 let currentLevelId = 1;
 let currentVehicleId = getDefaultVehicleId();
 
+// Restore last saved selections after storage is ready
+function restoreSelections() {
+  const saved = storage.getAll();
+  if (saved.lastSelectedVehicle) currentVehicleId = saved.lastSelectedVehicle;
+  if (saved.lastSelectedLevel)   currentLevelId  = saved.lastSelectedLevel;
+}
+
 let lastTimestamp = 0;
 let cameraX = 0;
 let cameraY = 0;
@@ -70,6 +77,8 @@ async function initCore() {
     renderer = new GameRenderer(ctx, world, particles);
     hud = new Hud();
     input = new InputManager(canvas);
+
+    restoreSelections();
 
     initUI({
       startRun,
@@ -181,6 +190,7 @@ function selectLevel(levelId) {
 
 function selectVehicle(vehicleId) {
   currentVehicleId = vehicleId;
+  storage.setLastSelected(currentLevelId, vehicleId);
 }
 
 function clearWorld() {
@@ -246,6 +256,7 @@ function update(dt) {
     cameraX,
     cameraY,
     levelTheme: runData.level.theme,
+    vehicle: runData.vehicle,
   });
 
   audioManager.updateEngine(runData.rpm, gas);
