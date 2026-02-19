@@ -1199,7 +1199,9 @@ function createCard(v) {
 }
 
 const grid = document.getElementById('grid');
-vehicles.forEach(v => grid.appendChild(createCard(v)));
+if (grid) {
+  vehicles.forEach(v => grid.appendChild(createCard(v)));
+}
 
 function filter(type, event) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
