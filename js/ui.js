@@ -430,24 +430,144 @@ export function initUI(api) {
 
       // Tapped somewhere on the card but not a button
       if (anyCard) {
-        const id       = anyCard.dataset.id;
+        const id         = anyCard.dataset.id;
         const isUnlocked = anyCard.dataset.unlocked === '1';
-        const cost     = Number(anyCard.dataset.cost);
-        const afford   = anyCard.dataset.canAfford === '1';
         const isSelected = api.getCurrentSelection?.().vehicleId === id;
 
         if (isUnlocked && !isSelected) {
           doSelect(id);
-        } else if (!isUnlocked && afford) {
-          doUnlock(id, cost);
-        } else if (!isUnlocked && !afford) {
-          // Flash the card to indicate not enough coins
-          anyCard.classList.add('gcard-shake');
-          setTimeout(() => anyCard.classList.remove('gcard-shake'), 500);
+        } else if (!isUnlocked) {
+          // Always open the unlock modal for locked vehicles
+          const v = vehicles.find(x => x.id === id);
+          if (v) openUnlockModal(v);
         }
       }
     };
   }
+
+  // ── Unlock Modal ────────────────────────────────────────────────────
+  const _modalEl = document.createElement('div');
+  _modalEl.id = 'unlock-modal';
+  _modalEl.className = 'umodal-overlay';
+  _modalEl.innerHTML = `
+    <div class="umodal">
+      <button class="umodal-close" id="umodal-close">✕</button>
+      <div class="umodal-svg" id="umodal-svg"></div>
+      <div class="umodal-name" id="umodal-name"></div>
+      <div class="umodal-type" id="umodal-type"></div>
+      <div class="umodal-price-row">
+        <span class="umodal-original" id="umodal-original"></span>
+        <span class="umodal-current" id="umodal-current"></span>
+      </div>
+      <div class="umodal-adsaved" id="umodal-adsaved"></div>
+      <div class="umodal-btns">
+        <button class="umodal-btn umodal-btn-ad" id="umodal-btn-ad">📺 Watch Ad&nbsp;&nbsp;−50 coins</button>
+        <button class="umodal-btn umodal-btn-buy" id="umodal-btn-buy"></button>
+      </div>
+      <div class="umodal-hint" id="umodal-hint"></div>
+    </div>`;
+  document.body.appendChild(_modalEl);
+  _modalEl.style.display = 'none';
+
+  let _modalVehicle = null;
+
+  function _updateModalPrice() {
+    if (!_modalVehicle) return;
+    const v        = _modalVehicle;
+    const discount = api.storage.getVehicleDiscount(v.id);
+    const final    = Math.max(0, v.cost - discount);
+    const coins    = api.storage.getCoins();
+    const adsN     = Math.floor(discount / 50);
+
+    const origEl = document.getElementById('umodal-original');
+    const curEl  = document.getElementById('umodal-current');
+    const savedEl= document.getElementById('umodal-adsaved');
+    const buyBtn = document.getElementById('umodal-btn-buy');
+    const hint   = document.getElementById('umodal-hint');
+
+    origEl.textContent  = discount > 0 ? `⚡ ${v.cost}` : '';
+    origEl.style.display = discount > 0 ? 'inline' : 'none';
+    curEl.textContent   = final === 0 ? '🎉 FREE!' : `⚡ ${final} coins`;
+    curEl.className     = final === 0 ? 'umodal-current free' : 'umodal-current';
+
+    savedEl.textContent = adsN > 0
+      ? `📺 ${adsN} ad${adsN > 1 ? 's' : ''} watched · ${discount} coins saved`
+      : '';
+
+    if (final === 0) {
+      buyBtn.textContent = '🎉 Unlock for Free!';
+      buyBtn.disabled    = false;
+      buyBtn.className   = 'umodal-btn umodal-btn-buy afford';
+    } else if (coins >= final) {
+      buyBtn.textContent = `⚡ Buy for ${final} coins`;
+      buyBtn.disabled    = false;
+      buyBtn.className   = 'umodal-btn umodal-btn-buy afford';
+    } else {
+      buyBtn.textContent = `Need ${final - coins} more coins`;
+      buyBtn.disabled    = true;
+      buyBtn.className   = 'umodal-btn umodal-btn-buy no-afford';
+    }
+    hint.textContent = `You have ⚡ ${coins} coins`;
+  }
+
+  function openUnlockModal(v) {
+    _modalVehicle = v;
+    const svgFn = svgMap[v.id];
+    document.getElementById('umodal-svg').innerHTML = svgFn ? svgFn(v) : '';
+    document.getElementById('umodal-name').textContent = v.name;
+    document.getElementById('umodal-type').textContent = v.type === 'car' ? '🚗 Car' : '🏍️ Bike';
+    _updateModalPrice();
+    _modalEl.style.display = 'flex';
+  }
+
+  function closeUnlockModal() {
+    _modalEl.style.display = 'none';
+    _modalVehicle = null;
+  }
+
+  document.getElementById('umodal-close').onclick = closeUnlockModal;
+  _modalEl.addEventListener('click', e => { if (e.target === _modalEl) closeUnlockModal(); });
+
+  document.getElementById('umodal-btn-ad').onclick = async () => {
+    if (!_modalVehicle) return;
+    const btn      = document.getElementById('umodal-btn-ad');
+    const platform = api.platform;
+    btn.disabled   = true;
+    btn.textContent = '⏳ Loading ad...';
+    try {
+      let success = false;
+      if (platform && platform.isPlatform()) {
+        const result = await platform.requestRewardedAd({ size: 'medium' });
+        success = result.success;
+      } else {
+        // Dev / offline: simulate a 1 s ad
+        await new Promise(r => setTimeout(r, 1200));
+        success = true;
+      }
+      if (success) {
+        api.storage.addVehicleDiscount(_modalVehicle.id, 50);
+        _updateModalPrice();
+      }
+    } catch {/* ignore */}
+    finally {
+      btn.disabled    = false;
+      btn.textContent = '📺 Watch Ad  −50 coins';
+    }
+  };
+
+  document.getElementById('umodal-btn-buy').onclick = () => {
+    if (!_modalVehicle) return;
+    const v        = _modalVehicle;
+    const discount = api.storage.getVehicleDiscount(v.id);
+    const final    = Math.max(0, v.cost - discount);
+    if (api.storage.getCoins() >= final) {
+      api.storage.addCoins(-final);
+      api.storage.unlockVehicle(v.id);
+      closeUnlockModal();
+      renderGarage();
+    }
+  };
+  // ── End Unlock Modal ─────────────────────────────────────────────────
 
   // Rewarded ad for coins (garage)
   if (btnWatchAdCoins) {

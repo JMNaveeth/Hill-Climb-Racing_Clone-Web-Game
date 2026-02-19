@@ -21,6 +21,7 @@ export class Storage {
       bestDistanceOverall: 0,
       lastSelectedVehicle: "rusty_hatchback",
       lastSelectedLevel: 1,
+      vehicleDiscounts: {},
     };
   }
 
@@ -99,6 +100,16 @@ export class Storage {
   setLastSelected(levelId, vehicleId) {
     this.state.lastSelectedLevel = levelId;
     this.state.lastSelectedVehicle = vehicleId;
+    this._save();
+  }
+
+  getVehicleDiscount(id) {
+    return (this.state.vehicleDiscounts && this.state.vehicleDiscounts[id]) || 0;
+  }
+
+  addVehicleDiscount(id, amount) {
+    if (!this.state.vehicleDiscounts) this.state.vehicleDiscounts = {};
+    this.state.vehicleDiscounts[id] = (this.state.vehicleDiscounts[id] || 0) + amount;
     this._save();
   }
 }
