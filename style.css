@@ -506,6 +506,10 @@ button {
   box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 28px rgba(99,202,255,0.1);
   border-color: rgba(255,255,255,0.15);
 }
+.gcard:active {
+  transform: scale(0.96);
+  transition: transform 0.08s ease;
+}
 .gcard-selected {
   border-color: #34d399 !important;
   box-shadow: 0 0 0 2px rgba(52,211,153,0.3) !important;
@@ -610,4 +614,14 @@ button {
 .gcard-btn-selected { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); cursor: default; }
 .gcard-btn-unlock { background: linear-gradient(135deg,#ffd200,#f7971e); color: #1a0a00; }
 .gcard-btn-unlock.cant-afford { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); cursor: not-allowed; }
+
+/* Shake when tapping a locked unaffordable card */
+@keyframes gcard-shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-7px); }
+  40%      { transform: translateX(7px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.gcard-shake { animation: gcard-shake 0.4s ease; border-color: #ef4444 !important; }
 

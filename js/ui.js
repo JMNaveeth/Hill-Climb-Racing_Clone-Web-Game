@@ -347,6 +347,11 @@ export function initUI(api) {
       const card = document.createElement('div');
       card.className = `gcard${unlocked ? '' : ' gcard-locked'}${selected ? ' gcard-selected' : ''}`;
       card.dataset.type = v.type;
+      card.dataset.id   = v.id;
+      card.dataset.unlocked = unlocked ? '1' : '0';
+      card.dataset.cost = v.cost;
+      card.dataset.canAfford = canAfford ? '1' : '0';
+      card.style.cursor = 'pointer';
 
       card.innerHTML = `
         <div class="gcard-bar" style="background:linear-gradient(90deg,${v.palette.body},${v.palette.accent})"></div>
@@ -395,12 +400,13 @@ export function initUI(api) {
       };
     });
 
-    // Card action buttons (delegated)
+    // Card tap — tapping anywhere on the card selects / unlocks it
     garageGrid.onclick = e => {
-      const selBtn = e.target.closest('.gcard-btn-select');
-      const unlBtn = e.target.closest('.gcard-btn-unlock');
-      if (selBtn) {
-        const id = selBtn.dataset.id;
+      const selBtn  = e.target.closest('.gcard-btn-select');
+      const unlBtn  = e.target.closest('.gcard-btn-unlock');
+      const anyCard = e.target.closest('.gcard');
+
+      function doSelect(id) {
         api.selectVehicle(id);
         if (api.getCurrentSelection) {
           const sel = api.getCurrentSelection();
@@ -408,13 +414,36 @@ export function initUI(api) {
         }
         renderGarage();
       }
-      if (unlBtn && !unlBtn.classList.contains('cant-afford')) {
-        const id = unlBtn.dataset.id;
-        const cost = Number(unlBtn.dataset.cost);
+
+      function doUnlock(id, cost) {
         if (st.getCoins() >= cost) {
           st.addCoins(-cost);
           st.unlockVehicle(id);
           renderGarage();
+        }
+      }
+
+      if (selBtn) { doSelect(selBtn.dataset.id); return; }
+      if (unlBtn && !unlBtn.classList.contains('cant-afford')) {
+        doUnlock(unlBtn.dataset.id, Number(unlBtn.dataset.cost)); return;
+      }
+
+      // Tapped somewhere on the card but not a button
+      if (anyCard) {
+        const id       = anyCard.dataset.id;
+        const isUnlocked = anyCard.dataset.unlocked === '1';
+        const cost     = Number(anyCard.dataset.cost);
+        const afford   = anyCard.dataset.canAfford === '1';
+        const isSelected = api.getCurrentSelection?.().vehicleId === id;
+
+        if (isUnlocked && !isSelected) {
+          doSelect(id);
+        } else if (!isUnlocked && afford) {
+          doUnlock(id, cost);
+        } else if (!isUnlocked && !afford) {
+          // Flash the card to indicate not enough coins
+          anyCard.classList.add('gcard-shake');
+          setTimeout(() => anyCard.classList.remove('gcard-shake'), 500);
         }
       }
     };
