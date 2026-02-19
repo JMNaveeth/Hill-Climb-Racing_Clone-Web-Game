@@ -475,22 +475,50 @@ button {
 .garage-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-  padding: 0 24px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 0 24px 16px;
   overflow-y: auto;
+  align-content: start;
   scrollbar-width: thin;
   scrollbar-color: rgba(99,202,255,0.3) transparent;
 }
 .garage-footer {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 24px 14px;
+  gap: 12px;
+  padding: 12px 24px 16px;
   flex-shrink: 0;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.25);
 }
-.garage-footer button { flex: 1; }
+.garage-footer button {
+  flex: 1;
+  padding: 13px 10px;
+  border-radius: 12px;
+  font-family: "Orbitron", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.garage-footer button:hover { transform: translateY(-2px); opacity: 0.92; }
+.garage-footer button:active { transform: scale(0.97); }
+#btn-watch-ad-coins {
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+  color: #fff;
+  box-shadow: 0 5px 20px rgba(255,100,80,0.4);
+}
+.garage-footer .btn-back {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: none;
+  flex: 0 0 auto;
+  padding: 13px 26px;
+}
 
 /* Vehicle cards */
 .gcard {
@@ -518,7 +546,7 @@ button {
 .gcard-bar { height: 3px; }
 .gcard-stage {
   position: relative;
-  height: 120px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -545,26 +573,29 @@ button {
   border: 1px solid rgba(52,211,153,0.4);
   padding: 3px 7px; border-radius: 20px; z-index: 3;
 }
-.gcard-body { padding: 10px 12px 12px; }
+.gcard-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
 .gcard-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 8px;
 }
 .gcard-name {
   font-family: "Orbitron", monospace;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
 }
 .gcard-type {
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
-  margin-top: 2px;
+  color: rgba(255,255,255,0.55);
+  margin-top: 1px;
 }
 .gcard-badge {
   font-family: "Orbitron", monospace;
@@ -580,40 +611,53 @@ button {
 .gcard-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px 10px;
-  margin-bottom: 8px;
+  gap: 6px 12px;
 }
-.gcard-stat { display: flex; flex-direction: column; gap: 3px; }
+.gcard-stat { display: flex; flex-direction: column; gap: 4px; }
 .gcard-stat-label {
-  font-size: 0.52rem;
-  letter-spacing: 0.14em;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.6);
+  font-weight: 600;
 }
 .gcard-stat-track {
-  height: 3px;
-  background: rgba(255,255,255,0.07);
-  border-radius: 2px;
+  height: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
   overflow: hidden;
 }
-.gcard-stat-fill { height: 100%; border-radius: 2px; }
+.gcard-stat-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 .gcard-action { margin-top: 2px; }
 .gcard-btn {
   width: 100%;
-  padding: 7px;
+  padding: 8px;
   border-radius: 8px;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.15s;
 }
-.gcard-btn:hover:not(:disabled) { transform: scale(1.02); opacity: 0.9; }
-.gcard-btn-select { background: linear-gradient(135deg,#63caff,#a78bfa); color: #fff; }
-.gcard-btn-selected { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); cursor: default; }
-.gcard-btn-unlock { background: linear-gradient(135deg,#ffd200,#f7971e); color: #1a0a00; }
-.gcard-btn-unlock.cant-afford { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); cursor: not-allowed; }
+.gcard-btn:hover:not(:disabled) { transform: scale(1.03); opacity: 0.92; }
+.gcard-btn-select {
+  background: linear-gradient(135deg,#63caff,#a78bfa);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99,202,255,0.35);
+}
+.gcard-btn-selected {
+  background: rgba(52,211,153,0.15);
+  color: #34d399;
+  border: 1px solid rgba(52,211,153,0.4);
+  cursor: default;
+}
+.gcard-btn-unlock {
+  background: linear-gradient(135deg,#ffd200,#f7971e);
+  color: #1a0a00;
+  box-shadow: 0 4px 14px rgba(255,180,0,0.3);
+}
+.gcard-btn-unlock.cant-afford { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.3); cursor: not-allowed; box-shadow: none; }
 
 /* Shake when tapping a locked unaffordable card */
 @keyframes gcard-shake {
